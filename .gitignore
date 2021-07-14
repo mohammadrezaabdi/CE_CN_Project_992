@@ -1,5 +1,1 @@
-*
-!.gitignore
-!*.py
-!*.md
-!doc/CN_Project_992_2.pdf
+.idea
