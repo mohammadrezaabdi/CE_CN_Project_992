@@ -15,7 +15,7 @@ packet_type = {
     PARENT_ADEVRTISE: 20,
     ADVERTISE: 21,
     DESTINATION_NOT_FOUND: 31,
-    CONNECTION_REQUEST: 41
+    CONNECTION_REQUEST: 41,
 }
 
 # usage --> CONNECT.format(id = 10 , port = 20)
@@ -23,7 +23,9 @@ CONNECT = "CONNECT AS {id} ON PORT {port}"
 CONNECT_REGEX = re.compile(r"^CONNECT AS (\d+) ON PORT (\d+)$")
 
 CONNECT_REQUEST = "{id} REQUESTS FOR CONNECTING TO NETWORK ON PORT {port}"
-CONNECT_REQUEST_REGEX = re.compile(r"^(\d+) REQUESTS FOR CONNECTING TO NETWORK ON PORT (\d+)$")
+CONNECT_REQUEST_REGEX = re.compile(
+    r"^(\d+) REQUESTS FOR CONNECTING TO NETWORK ON PORT (\d+)$"
+)
 
 CONNECT_ACCEPT = "CONNECT TO {id_parent} WITH PORT {port_parent}"
 CONNECT_ACCEPT_REGEX = re.compile(r"^CONNECT TO (\d+) WITH PORT (\d+)$")
@@ -57,8 +59,12 @@ START_CHAT_REGEX = re.compile(r"^START CHAT (\w+): (.+)$")
 REQ_FOR_CHAT = "REQUESTS FOR STARTING CHAT WITH {name}: {ids}"
 REQ_FOR_CHAT_REGEX = re.compile(r"^REQUESTS FOR STARTING CHAT WITH (\w+): (.+)$")
 
-ASK_JOIN_CHAT = "{chat_name} with id {id} has asked you to join a chat. Would you like to join?"
-ASK_JOIN_CHAT_REGEX = re.compile(r"^(\w+) with id (\d+) has asked you to join a chat. Would you like to join?$")
+ASK_JOIN_CHAT = (
+    "{chat_name} with id {id} has asked you to join a chat. Would you like to join?"
+)
+ASK_JOIN_CHAT_REGEX = re.compile(
+    r"^(\w+) with id (\d+) has asked you to join a chat. Would you like to join?$"
+)
 
 YES = "Y"
 YES_REGEX = re.compile(r"^Y$")
@@ -85,7 +91,9 @@ LEFT_CHAT = "{chat_name}({id}) left the chat."
 LEFT_CHAT_REGEX = re.compile(r"^(\w+)((\d+)) left the chat.$")
 
 FILTER = "FILTER {direction} {src_id} {dest_id} {type} {action}"
-FILTER_REGEX = re.compile(r"^FILTER (INPUT|OUTPUT|FORWARD) (\d+) (\d+) (\d+) (ACCEPT|DROP)$")
+FILTER_REGEX = re.compile(
+    r"^FILTER (INPUT|OUTPUT|FORWARD) (\d+) (\d+) (\d+) (ACCEPT|DROP)$"
+)
 
 FW_CHAT = "FW CHAT {action}"
 FW_CHAT_REGEX = re.compile(r"^FW CHAT (ACCEPT|DROP)$")
@@ -102,5 +110,7 @@ CHAT_IS_DISABLE = "Chat is disabled. Make sure the firewall allows you to chat."
 LOG_TEMPLATE = "{type} Packet from {id_src} to {id_dest}"
 
 MANAGER_IP = "127.0.0.1"
-MANAGER_PORT = "8558"
+MANAGER_PORT = 8558
 DEFAULT_IP = MANAGER_IP
+
+BUFFER_SIZE = 1024

@@ -1,6 +1,6 @@
 import socket
 import logging
-import constants
+import constants as consts
 from server import Server
 
 import log
@@ -9,7 +9,7 @@ log.init()
 
 nodes_port = []
 
-logger = logging.getLogger('manager')
+logger = logging.getLogger("manager")
 
 
 def get_parent(num):
@@ -28,25 +28,31 @@ def handle_client(conn: socket.socket):
     logger.debug("handling new client")
     with conn:
         try:
-            data = conn.recv(1024).decode("ascii")
+            data = conn.recv(consts.BUFFER_SIZE).decode("ascii")
             logger.debug(f"received message is:{data}")
             if not data:
                 return
 
-            id, port = constants.CONNECT_REQUEST_REGEX.findall(data)
+            [(id, port)] = consts.CONNECT_REQUEST_REGEX.findall(data)
             nodes_port.append((id, port))
-            parent_id, parent_port = nodes_port[get_parent(len(nodes_port) - 1)]
-            response = constants.CONNECT_ACCEPT.format(id_parent=parent_id, port_parent=parent_port)
-            conn.sendall(response)
+            if len(nodes_port) == 1:
+                parent_id, parent_port = -1, -1
+            else:
+                parent_id, parent_port = nodes_port[get_parent(len(nodes_port) - 1)]
+            response = consts.CONNECT_ACCEPT.format(
+                id_parent=parent_id, port_parent=parent_port
+            )
+            logger.debug(f"parent_id={parent_id}, parent_port={parent_port}")
+            conn.sendall(response.encode("ascii"))
 
         except Exception as e:
             raise Exception(e)
 
 
 def main():
-    manager = Server(constants.MANAGER_IP, constants.MANAGER_PORT, handle_client, logger)
+    manager = Server(consts.MANAGER_IP, consts.MANAGER_PORT, handle_client, logger)
     manager.listen()
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()
