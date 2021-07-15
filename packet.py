@@ -1,16 +1,17 @@
 import constants as const
+
 from enum import IntEnum
 
 
 class PacketType(IntEnum):
     MESSAGE = 0
     ROUTING_REQUEST = 10
-    ROUTING_RESPOSE = 11
-    PARENT_ADEVRTISE = 20
+    ROUTING_RESPONSE = 11
+    PARENT_ADVERTISE = 20
     ADVERTISE = 21
     DESTINATION_NOT_FOUND = 31
     CONNECTION_REQUEST = 41
-    CONNECTION_RESPONE = 42
+    CONNECTION_RESPONSE = 42
 
 
 class Packet:

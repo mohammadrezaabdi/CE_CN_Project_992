@@ -35,7 +35,7 @@ def handle_client(conn: socket.socket):
             data = ast.literal_eval(data)
             logger.debug(f"received message is:{data}")
             packet = Packet(**data)
-            if packet.p_type == consts.packet_type[consts.CONNECTION_REQUEST]:
+            if packet.p_type == PacketType.CONNECTION_REQUEST:
                 [(id, port)] = consts.CONNECT_REQUEST_REGEX.findall(packet.data)
                 parent_id, parent_port = -1, -1
                 if nodes_port:
@@ -48,7 +48,7 @@ def handle_client(conn: socket.socket):
                     id_parent=parent_id, port_parent=parent_port
                 )
                 send_packet = Packet(
-                    p_type=consts.packet_type[consts.CONNECTION_RESPONE],
+                    p_type=PacketType.CONNECTION_RESPONSE.value,
                     src_id=-1,
                     dest_id=id,
                     data=response,
@@ -56,7 +56,7 @@ def handle_client(conn: socket.socket):
                 conn.sendall(str(send_packet.__dict__).encode("ascii"))
 
         except Exception as e:
-            raise Exception(e)
+            raise e
 
 
 def main():
