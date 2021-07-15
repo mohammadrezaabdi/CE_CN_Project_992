@@ -12,8 +12,18 @@ logger = logging.getLogger("node")
 
 
 class IdTable:
-    def get_next_hop(self, dest_id):
-        pass
+    def __init__(self):
+        self.table: dict[int, tuple[int, int]] = {}
+
+    def get_next_hop(self, dest_id: int):
+        if dest_id not in self.table:
+            return consts.NEXT_HOP_NOT_FOUND
+        return self.table[dest_id]
+
+    def add_entry(self, dest_id: int, next_hop: (int, int)):
+        if dest_id in self.table and self.table[dest_id] != next_hop:
+            raise Exception("there is a loop")
+        self.table[dest_id] = next_hop
 
 
 class Node:
@@ -21,11 +31,9 @@ class Node:
         self.id = ID
         self.port = port
         self.id_table = IdTable()
-        self.parent = None
         self.left_child = None
         self.right_child = None
-        self.left_tree = []
-        self.right_tree = []
+        self.parent = None
         self.server_socket = Server(consts.DEFAULT_IP, port, self.handler, logger)
 
     def handler(self, conn: socket.socket):
@@ -74,10 +82,10 @@ class Node:
         # from new child
         if self.left_child:
             self.right_child = (int(p.src_id), int(p.data))
-            self.right_tree.append(int(p.src_id))
+            self.id_table.add_entry(int(self.right_child[0]), self.right_child)
         else:
             self.left_child = (int(p.src_id), int(p.data))
-            self.left_tree.append(int(p.src_id))
+            self.id_table.add_entry(int(self.left_child[0]), self.left_child)
 
     def routing_request_handle(self, p: Packet):
         dest_id, dest_port = self.id_table.get_next_hop(p.dest_id)
@@ -100,9 +108,9 @@ class Node:
 
     def advertise_parent_handle(self, p: Packet):
         if p.src_id == self.left_child[0]:
-            self.left_tree.append(int(p.data))
+            self.id_table.add_entry(int(p.data), self.left_child)
         elif p.src_id == self.right_child[0]:
-            self.right_tree.append(int(p.data))
+            self.id_table.add_entry(int(p.data), self.right_child)
         # send packet to parent
         if self.parent[0] == consts.ROOT_PARENT_ID:
             return
@@ -146,6 +154,7 @@ def main():
         node.parent = (consts.ROOT_PARENT_ID, consts.ROOT_PARENT_PORT)
     else:
         node.parent = (int(pid), int(pport))
+        node.id_table.add_entry(int(node.parent[0]), node.parent)
 
     family_meeting(node.id, node.port, int(node.parent[0]), int(node.parent[1]))
 
