@@ -8,7 +8,6 @@ ADVERTISE = "ADVERTISE"
 DESTINATION_NOT_FOUND = "DESTINATION_NOT_FOUND"
 CONNECTION_REQUEST = "CONNECTION_REQUEST"
 
-
 packet_type = {
     MESSAGE: 0,
     ROUTING_REQUEST: 10,
@@ -26,7 +25,7 @@ CONNECT_REGEX = re.compile(r"^CONNECT AS (\d+) ON PORT (\d+)$")
 CONNECT_REQUEST = "{id} REQUESTS FOR CONNECTING TO NETWORK ON PORT {port}"
 CONNECT_REQUEST_REGEX = re.compile(r"^(\d+) REQUESTS FOR CONNECTING TO NETWORK ON PORT (\d+)$")
 
-CONNECT_ACCEPT =  "CONNECT TO {id_parent} WITH PORT {port_parent}"
+CONNECT_ACCEPT = "CONNECT TO {id_parent} WITH PORT {port_parent}"
 CONNECT_ACCEPT_REGEX = re.compile(r"^CONNECT TO (\d+) WITH PORT (\d+)$")
 
 SHOW_KNOWN_CLIENTS = "SHOW KNOWN CLIENTS"
@@ -43,13 +42,11 @@ ROUTE_REGEX = re.compile(r"^ROUTE (\d+)$")
 ADVERTISE = "Advertise {id}"
 ADVERTISE_REGEX = re.compile(r"^Advertise (\d+)$")
 
-
 SALAM = "Salam Salam Sad Ta Salam"
 SALAM = re.compile(r"^Salam Salam Sad Ta Salam$")
 
 SALAM_RESPONSE = "Hezaro Sisad Ta Salam"
 SALAM_RESPONSE_REGEX = re.compile(r"^Hezaro Sisad Ta Salam$")
-
 
 CHAT = "CHAT: "
 
@@ -60,13 +57,11 @@ START_CHAT_REGEX = re.compile(r"^START CHAT (\w+): (.+)$")
 REQ_FOR_CHAT = "REQUESTS FOR STARTING CHAT WITH {name}: {ids}"
 REQ_FOR_CHAT_REGEX = re.compile(r"^REQUESTS FOR STARTING CHAT WITH (\w+): (.+)$")
 
-
 ASK_JOIN_CHAT = "{chat_name} with id {id} has asked you to join a chat. Would you like to join?"
 ASK_JOIN_CHAT_REGEX = re.compile(r"^(\w+) with id (\d+) has asked you to join a chat. Would you like to join?$")
 
 YES = "Y"
 YES_REGEX = re.compile(r"^Y$")
-
 
 YES = "N"
 YES_REGEX = re.compile(r"^N$")
@@ -101,7 +96,6 @@ FORWARD = "FORWARD"
 
 ACCEPT = "ACCEPT"
 DROP = "DROP"
-
 
 CHAT_IS_DISABLE = "Chat is disabled. Make sure the firewall allows you to chat."
 
