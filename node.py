@@ -65,17 +65,6 @@ class Node:
                 elif packet.p_type == PacketType.DESTINATION_NOT_FOUND:
                     self.routing_response_handle(packet, True)
 
-                # response = consts.CONNECT_ACCEPT.format(
-                #     id_parent=parent_id, port_parent=parent_port
-                # )
-                # send_packet = Packet(
-                #     p_type=PacketType.CONNECTION_RESPONSE,
-                #     src_id=-1,
-                #     dest_id=id,
-                #     data=response,
-                # )
-                # conn.sendall(str(send_packet.__dict__).encode("ascii"))
-
             except Exception as e:
                 raise Exception(e)
 
@@ -89,16 +78,17 @@ class Node:
             self.id_table.add_entry(int(self.left_child[0]), self.left_child)
 
     def routing_request_handle(self, p: Packet):
-        dest_id, dest_port = self.id_table.get_next_hop(p.dest_id)
         if p.dest_id == self.id:
             sent_packet = Packet(PacketType.ROUTING_RESPONSE.value, self.id, p.src_id, f"{self.id}")
-            _, dest_port = self.id_table.get_next_hop(p.src_id)
-        elif dest_id == consts.NEXT_HOP_NOT_FOUND:
-            sent_packet = Packet(PacketType.DESTINATION_NOT_FOUND.value, self.id, p.src_id,
-                                 consts.DEST_NOT_FOUND.format(id_dest=p.dest_id))
-            _, dest_port = self.id_table.get_next_hop(p.src_id)
+            _, dest_port = self.id_table.get_next_hop(int(p.src_id))
         else:
-            sent_packet = p
+            dest_id, dest_port = self.id_table.get_next_hop(p.dest_id)
+            if dest_id == consts.NEXT_HOP_NOT_FOUND:
+                sent_packet = Packet(PacketType.DESTINATION_NOT_FOUND.value, self.id, p.src_id,
+                                     consts.DEST_NOT_FOUND.format(id_dest=p.dest_id))
+                _, dest_port = self.id_table.get_next_hop(p.src_id)
+            else:
+                sent_packet = p
         client.send(consts.DEFAULT_IP, int(dest_port), sent_packet)
 
     def advertise_parent(self, src_id: int):
@@ -125,8 +115,8 @@ class Node:
                 data = str(self.id) + ' <- ' + data
             else:
                 data = str(self.id) + ' -> ' + data
-        if p.dest_id == id:
-            print(p.data)
+        if p.dest_id == self.id:
+            print(data)
             return
         route_packet = Packet(PacketType.ROUTING_RESPONSE, self.id, p.dest_id, data)
         client.send(consts.DEFAULT_IP, int(self.id_table.get_next_hop(p.dest_id)[1]), route_packet)
@@ -172,12 +162,10 @@ def main():
 
     family_meeting(node.id, node.port, int(node.parent[0]), int(node.parent[1]))
 
-    t = threading.Thread(target=client.handle_user_commands)
+    t = threading.Thread(target=client.handle_user_commands, args=(node,))
     t.start()
 
     node.server_socket.listen()
-
-
 
 
 if __name__ == "__main__":

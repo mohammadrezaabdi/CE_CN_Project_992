@@ -1,7 +1,8 @@
 import logging
 import socket
-import threading
 import time
+import re
+from node import Node
 import constants as consts
 from packet import *
 
@@ -21,11 +22,16 @@ def send(ip: str, port: int, packet: Packet):
                 logger.exception("waiting for server...")
 
 
-def handle_user_commands():
+def send_route_message(dest_id: int, node: Node):
+    sent_packet = Packet(PacketType.ROUTING_REQUEST.value, node.id, int(dest_id), f"")
+    send(consts.DEFAULT_IP, node.id_table.get_next_hop(dest_id)[1], sent_packet)
+
+
+def handle_user_commands(node: Node):
     while True:
         cmd = input().strip()
         if consts.ROUTE_REGEX.match(cmd):
-            pass
+            send_route_message(int(re.findall(consts.ROUTE_REGEX, cmd)[0]), node)
         if consts.ADVERTISE_REGEX.match(cmd):
             pass
         if consts.SALAM_REGEX.match(cmd):
