@@ -24,10 +24,6 @@ def get_right_child(num):
     return num * 2 + 2
 
 
-ip = "127.0.0.1"
-port = "8080"
-
-
 def handle_client(conn: socket.socket):
     logger.debug("handling new client")
     with conn:
@@ -48,7 +44,7 @@ def handle_client(conn: socket.socket):
 
 
 def main():
-    manager = Server(ip, port,handle_client,logger)
+    manager = Server(constants.MANAGER_IP, constants.MANAGER_PORT, handle_client, logger)
     manager.listen()
 
 

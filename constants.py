@@ -100,3 +100,7 @@ DROP = "DROP"
 CHAT_IS_DISABLE = "Chat is disabled. Make sure the firewall allows you to chat."
 
 LOG_TEMPLATE = "{type} Packet from {id_src} to {id_dest}"
+
+MANAGER_IP = "127.0.0.1"
+MANAGER_PORT = "8558"
+DEFAULT_IP = MANAGER_IP
