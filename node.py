@@ -1,4 +1,5 @@
 import socket
+import threading
 import logging
 
 import packet
@@ -58,11 +59,11 @@ class Node:
                 elif packet.p_type == PacketType.ROUTING_REQUEST:
                     self.routing_request_handle(packet)
                 elif packet.p_type == PacketType.ROUTING_RESPONSE:
-                    pass
+                    self.routing_response_handle(packet, False)
                 elif packet.p_type == PacketType.PARENT_ADVERTISE:
                     self.advertise_parent_handle(packet)
                 elif packet.p_type == PacketType.DESTINATION_NOT_FOUND:
-                    pass
+                    self.routing_response_handle(packet, True)
 
                 # response = consts.CONNECT_ACCEPT.format(
                 #     id_parent=parent_id, port_parent=parent_port
@@ -117,6 +118,19 @@ class Node:
         advertise_parent_packet = Packet(PacketType.PARENT_ADVERTISE.value, self.id, self.parent[0], f"{p.data}")
         client.send(consts.DEFAULT_IP, int(self.parent[1]), advertise_parent_packet)
 
+    def routing_response_handle(self, p: Packet, is_not_found=False):
+        data = p.data
+        if not is_not_found:
+            if p.src_id == self.parent[0]:
+                data = str(self.id) + ' <- ' + data
+            else:
+                data = str(self.id) + ' -> ' + data
+        if p.dest_id == id:
+            print(p.data)
+            return
+        route_packet = Packet(PacketType.ROUTING_RESPONSE, self.id, p.dest_id, data)
+        client.send(consts.DEFAULT_IP, int(self.id_table.get_next_hop(p.dest_id)[1]), route_packet)
+
 
 def network_init(id, port) -> packet.Packet:
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
@@ -158,7 +172,12 @@ def main():
 
     family_meeting(node.id, node.port, int(node.parent[0]), int(node.parent[1]))
 
+    t = threading.Thread(target=client.handle_user_commands)
+    t.start()
+
     node.server_socket.listen()
+
+
 
 
 if __name__ == "__main__":
