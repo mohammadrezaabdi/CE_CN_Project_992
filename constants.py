@@ -39,13 +39,13 @@ SHOW_KNOWN_CLIENTS_REGEX = re.compile(r"^SHOW KNOWN CLIENTS$")
 UNKNOWN_DEST = "Unknown destination {id_dest}"
 
 DEST_NOT_FOUND = "DESTINATION {id_dest} NOT FOUND"
-DEST_NOT_FOUND_REGEX = re.compile(r"^DESTINATION (\d+) NOT FOUND$")
+DEST_NOT_FOUND_REGEX = re.compile(r"^DESTINATION (-?\d+) NOT FOUND$")
 
 ROUTE = "ROUTE {id}"
-ROUTE_REGEX = re.compile(r"^ROUTE (\d+)$")
+ROUTE_REGEX = re.compile(r"^ROUTE (-?\d+)$")
 
 ADVERTISE = "Advertise {id}"
-ADVERTISE_REGEX = re.compile(r"^Advertise (\d+)$")
+ADVERTISE_REGEX = re.compile(r"^Advertise (-?\d+)$")
 
 SALAM = "Salam Salam Sad Ta Salam"
 SALAM = re.compile(r"^Salam Salam Sad Ta Salam$")
@@ -66,7 +66,7 @@ ASK_JOIN_CHAT = (
     "{chat_name} with id {id} has asked you to join a chat. Would you like to join?"
 )
 ASK_JOIN_CHAT_REGEX = re.compile(
-    r"^(\w+) with id (\d+) has asked you to join a chat. Would you like to join?$"
+    r"^(\w+) with id (-?\d+) has asked you to join a chat. Would you like to join?$"
 )
 
 YES = "Y"
@@ -78,7 +78,7 @@ YES_REGEX = re.compile(r"^N$")
 CHOOSE_NAME_MSG = "Choose a name for yourself"
 
 SET_NAME = "{id} :{chat_name}"
-SET_NAME_REGEX = re.compile(r"(\d+) :(\w+)$")
+SET_NAME_REGEX = re.compile(r"(-?\d+) :(\w+)$")
 
 JOINED_CHAT = "{chat_name}({id}) was joind to the chat."
 
@@ -88,14 +88,14 @@ SHOW_MSG_REGEX = re.compile(r"^(\w+): (.*)$")
 EXIT_CHAT_MSG = "EXIT CHAT"
 
 EXIT_CHAT = "EXIT CHAT {id}"
-EXIT_CHAT_REGEX = re.compile(r"^EXIT CHAT (\d+)$")
+EXIT_CHAT_REGEX = re.compile(r"^EXIT CHAT (-?\d+)$")
 
 LEFT_CHAT = "{chat_name}({id}) left the chat."
-LEFT_CHAT_REGEX = re.compile(r"^(\w+)((\d+)) left the chat.$")
+LEFT_CHAT_REGEX = re.compile(r"^(\w+)((-?\d+)) left the chat.$")
 
 FILTER = "FILTER {direction} {src_id} {dest_id} {type} {action}"
 FILTER_REGEX = re.compile(
-    r"^FILTER (INPUT|OUTPUT|FORWARD) (\d+) (\d+) (\d+) (ACCEPT|DROP)$"
+    r"^FILTER (INPUT|OUTPUT|FORWARD) (-?\d+) (-?\d+) (-?\d+) (ACCEPT|DROP)$"
 )
 
 FW_CHAT = "FW CHAT {action}"
