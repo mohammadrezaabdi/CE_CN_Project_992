@@ -25,4 +25,26 @@ def handle_user_commands():
     while True:
         cmd = input().strip()
         if consts.ROUTE_REGEX.match(cmd):
-            print('route')
+            pass
+        if consts.ADVERTISE_REGEX.match(cmd):
+            pass
+        if consts.SALAM_REGEX.match(cmd):
+            pass
+        if consts.CHAT_REGEX.match(cmd):
+            pass
+        if consts.START_CHAT_REGEX.match(cmd):
+            pass
+        if consts.REQ_FOR_CHAT_REGEX.match(cmd):
+            pass
+        if consts.ASK_JOIN_CHAT_REGEX.match(cmd):
+            pass
+        if consts.YES_REGEX.match(cmd):
+            pass
+        if consts.SET_NAME_REGEX.match(cmd):
+            pass
+        if consts.EXIT_CHAT_REGEX.match(cmd):
+            pass
+        if consts.FILTER_REGEX.match(cmd):
+            pass
+        if consts.FW_CHAT_REGEX.match(cmd):
+            pass

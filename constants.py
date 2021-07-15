@@ -48,12 +48,12 @@ ADVERTISE = "Advertise {id}"
 ADVERTISE_REGEX = re.compile(r"^Advertise (-?\d+)$")
 
 SALAM = "Salam Salam Sad Ta Salam"
-SALAM = re.compile(r"^Salam Salam Sad Ta Salam$")
+SALAM_REGEX = re.compile(r"^Salam Salam Sad Ta Salam$")
 
 SALAM_RESPONSE = "Hezaro Sisad Ta Salam"
 SALAM_RESPONSE_REGEX = re.compile(r"^Hezaro Sisad Ta Salam$")
 
-CHAT = "CHAT: "
+CHAT_REGEX = re.compile(r"^CHAT: $")
 
 # START_CHAT.format(name="chat1", ids=", ".join(map(str,[3, 2, 5])))
 START_CHAT = "START CHAT {name}: {ids}"
