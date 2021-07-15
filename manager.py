@@ -63,8 +63,13 @@ def get_right_child(num):
     return num * 2 + 2
 
 
+ip = "127.0.0.1"
+port = "8080"
+
+
 def main():
-    pass
+    manager = Server(ip, port)
+    manager.listen()
 
 
 if __name__ == '__main__':
