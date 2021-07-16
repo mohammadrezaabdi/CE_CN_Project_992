@@ -109,13 +109,16 @@ class Node:
                 if not self.id_table.fw_allows(packet):
                     return
 
+                if self.id == packet.dest_id or packet.dest_id == consts.SEND_ALL:
+                    self.id_table.known_hosts.add(packet.src_id)
+
                 if packet.p_type == PacketType.CONNECTION_REQUEST:
                     self.connection_request_handle(packet)
                     self.advertise_parent(packet.src_id)
                 elif packet.p_type == PacketType.CONNECTION_RESPONSE:
                     pass
                 elif packet.p_type == PacketType.MESSAGE:
-                    pass
+                    self.message_handle(packet)
                 elif packet.p_type == PacketType.ROUTING_REQUEST:
                     self.routing_request_handle(packet)
                 elif packet.p_type == PacketType.ROUTING_RESPONSE:
@@ -217,29 +220,42 @@ class Node:
 
     def send_packet(self, p_type: PacketType, dest_id: int, data: str = ""):
         sent_packet = Packet(p_type.value, self.id, int(dest_id), data)
-        if dest_id == consts.SEND_ALL:
-            hops = set([route.next_hop for route in self.id_table.routing_table])
-            for hop in hops:
-                self.send(sent_packet, port=int(hop[1]))
-            return
+        self.send_packet_util(sent_packet)
 
-        self.send(sent_packet)
+    def send_packet_util(self, p: Packet):
+        if int(p.dest_id) == consts.SEND_ALL:
+            hops = set([route.next_hop for route in self.id_table.routing_table])
+            hops.discard(self.id_table.get_next_hop(p.src_id))
+            hops.discard((self.id, self.port))
+            for hop in hops:
+                self.send(p, port=int(hop[1]))
+            return
+        self.send(p)
 
     def advertise_handle(self, p: Packet):
         if p.dest_id == self.id or p.src_id == self.id:
-            self.id_table.known_hosts.add(p.src_id)
             return
 
         if p.dest_id == consts.SEND_ALL:
-            self.id_table.known_hosts.add(p.src_id)
             hops = set([route.next_hop for route in self.id_table.routing_table])
             hops.remove(self.id_table.get_next_hop(p.src_id))
             hops.remove((self.id, self.port))
             for hop in hops:
                 self.send(p, port=hop[1])
             return
-
         self.send(p)
+
+    def message_handle(self, p: Packet):
+        if p.dest_id == consts.SEND_ALL:
+            self.send_packet_util(p)
+        if p.dest_id == self.id or p.dest_id == consts.SEND_ALL:
+            if consts.SALAM_RAW_REGEX.match(p.data):
+                print(consts.SALAM, f"from {p.src_id}")
+                p = Packet(PacketType.MESSAGE.value, self.id, p.src_id, consts.SALAM_RESPONSE)
+            elif consts.SALAM_RESPONSE_REGEX.match(p.data):
+                print(consts.SALAM_RESPONSE, f"from {p.src_id}")
+                return
+        self.send_packet_util(p)
 
 
 def network_init(id, port) -> packet.Packet:

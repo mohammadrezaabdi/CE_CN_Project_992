@@ -33,7 +33,7 @@ def handle_user_commands(node: Node):
         elif consts.ADVERTISE_ALL_REGEX.match(cmd):
             node.send_packet(PacketType.ADVERTISE, consts.SEND_ALL)
         elif consts.SALAM_REGEX.match(cmd):
-            pass
+            node.send_packet(PacketType.MESSAGE, int(consts.SALAM_REGEX.findall(cmd)[0]), consts.SALAM)
         elif consts.CHAT_REGEX.match(cmd):
             pass
         elif consts.START_CHAT_REGEX.match(cmd):
