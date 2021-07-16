@@ -24,7 +24,10 @@ def send(ip: str, port: int, packet: Packet):
 
 def send_route_message(dest_id: int, node: Node):
     sent_packet = Packet(PacketType.ROUTING_REQUEST.value, node.id, int(dest_id), f"")
-    send(consts.DEFAULT_IP, node.id_table.get_next_hop(dest_id)[1], sent_packet)
+    try:
+        send(consts.DEFAULT_IP, node.id_table.get_next_hop(dest_id)[1], sent_packet)
+    except Exception as e:
+        print(consts.DEST_NOT_FOUND.format(id_dest=dest_id))
 
 
 def handle_user_commands(node: Node):

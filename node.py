@@ -89,6 +89,7 @@ class Node:
         self.right_child = None
         self.parent = None
         self.server_socket = Server(consts.DEFAULT_IP, port, self.handler, logger)
+        self.id_table.add_entry(ID, (ID, port))
 
     def handler(self, conn: socket.socket):
         logger.debug("handling new client")
@@ -165,7 +166,7 @@ class Node:
 
     def routing_response_handle(self, p: Packet, is_not_found=False):
         data = p.data
-        if not is_not_found:
+        if not (is_not_found or int(self.id) == int(p.dest_id) == int(p.src_id)):
             if p.src_id == self.parent[0]:
                 data = str(self.id) + ' <- ' + data
             else:
@@ -174,6 +175,7 @@ class Node:
             print(data)
             return
         p.data = data
+        p.src_id = self.id
         self.send(p)
 
     def fw_drop(self, dest_id):
