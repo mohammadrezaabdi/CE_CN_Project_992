@@ -7,10 +7,12 @@ from typing import Any
 
 import client
 import constants as consts
+import log
 import packet
 from packet import Packet, PacketType
 from server import Server
 
+log.init()
 logger = logging.getLogger("node")
 
 

@@ -1,7 +1,7 @@
 import logging
 
 LOG_DIR = "./logs"
-loggers = ["manager", "client", "server", "group", "user", "channel"]
+loggers = ["manager", "client", "server", "node"]
 STD_LOG_LEVEL = logging.DEBUG
 FILE_LOG_LEVEL = logging.INFO
 
