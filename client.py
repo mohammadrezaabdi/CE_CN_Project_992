@@ -51,6 +51,11 @@ def handle_user_commands(node: Node):
         if consts.EXIT_CHAT_REGEX.match(cmd):
             pass
         if consts.FILTER_REGEX.match(cmd):
-            pass
+            dir, src, dst, action = consts.FILTER_REGEX.findall(cmd)
+            if src == "*":
+                src = None
+            if dst == "*":
+                dst = None
+            node.set_fw_rule(dir, src, dst, action)
         if consts.FW_CHAT_REGEX.match(cmd):
             pass

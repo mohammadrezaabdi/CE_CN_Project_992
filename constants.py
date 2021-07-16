@@ -1,6 +1,5 @@
 import re
 
-
 MESSAGE = "MESSAGE"
 ROUTING_REQUEST = "ROUTING_REQUEST"
 ROUTING_RESPOSE = "ROUTING_RESPOSE"
@@ -95,7 +94,7 @@ LEFT_CHAT_REGEX = re.compile(r"^(\w+)((-?\d+)) left the chat.$")
 
 FILTER = "FILTER {direction} {src_id} {dest_id} {type} {action}"
 FILTER_REGEX = re.compile(
-    r"^FILTER (INPUT|OUTPUT|FORWARD) (-?\d+) (-?\d+) (-?\d+) (ACCEPT|DROP)$"
+    r"^FILTER (INPUT|OUTPUT|FORWARD) ([-?\d+|*]) ([-?\d+|*]) (ACCEPT|DROP)$"
 )
 
 FW_CHAT = "FW CHAT {action}"

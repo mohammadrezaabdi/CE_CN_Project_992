@@ -1,6 +1,7 @@
 import socket
 import threading
 import logging
+from typing import Any
 
 import packet
 from server import Server
@@ -14,8 +15,8 @@ logger = logging.getLogger("node")
 
 
 class FWState(Enum):
-    ACCEPT= 0
-    DROP= 1
+    ACCEPT = 0
+    DROP = 1
 
 
 class IdRoute:
@@ -28,6 +29,7 @@ class IdRoute:
 class IdTable:
     def __init__(self):
         self.table: list[IdRoute] = []
+        self.fw_table: list[tuple[Any, Any, FWState]] = []
 
     def get_next_hop(self, dest_id: int):
         results = [route for route in self.table if route.dest == dest_id and route.state == FWState.ACCEPT]
@@ -42,6 +44,36 @@ class IdTable:
             raise Exception("there is a loop")
 
         self.table.append(IdRoute(dest_id, next_hop))
+
+    def set_state(self, dest_id: int, state: FWState):
+        for route in self.table:
+            if route.dest == dest_id:
+                route.state = state
+
+    def fw_allows(self, p: Packet) -> bool:
+        src = p.src_id
+        dst = p.dest_id
+
+        # both dst and src are valid ids
+        rules = [rule for rule in self.fw_table if rule[0] == src and rule[1] == dst]
+        if rules:
+            return (True, False)[rules[0][2] == FWState.DROP]
+
+        # src is match all
+        rules = [rule for rule in self.fw_table if not rule[0] and rule[1] == dst]
+        if rules:
+            return (True, False)[rules[0][2] == FWState.DROP]
+
+        # dst is match all
+        rules = [rule for rule in self.fw_table if not rule[1] and rule[0] == src]
+        if rules:
+            return (True, False)[rules[0][2] == FWState.DROP]
+
+        # dst and src are both match all
+        rules = [rule for rule in self.fw_table if not rule[1] and not rule[0]]
+        if rules:
+            return (True, False)[rules[0][2] == FWState.DROP]
+        return True
 
 
 class Node:
@@ -65,6 +97,9 @@ class Node:
                 data = ast.literal_eval(data)
                 logger.debug(f"received message is:{data}")
                 packet = Packet(**data)
+
+                if not self.id_table.fw_allows(packet):
+                    return
 
                 if packet.p_type == PacketType.CONNECTION_REQUEST:
                     self.connection_request_handle(packet)
@@ -137,6 +172,24 @@ class Node:
             return
         route_packet = Packet(PacketType.ROUTING_RESPONSE, self.id, p.dest_id, data)
         client.send(consts.DEFAULT_IP, int(self.id_table.get_next_hop(p.dest_id)[1]), route_packet)
+
+    def fw_drop(self, dest_id):
+        self.id_table.set_state(dest_id, FWState.DROP)
+
+    def fw_accept(self, dest_id):
+        self.id_table.set_state(dest_id, FWState.ACCEPT)
+
+    def set_fw_rule(self, dir, src, dst, action):
+        if dir == "INPUT":
+            self.id_table.fw_table.append((src, self.id, FWState[action]))
+        elif dir == "OUTPUT":
+            self.id_table.fw_table.append((self.id, dst, FWState[action]))
+        elif dir == "FORWARD":
+            self.id_table.fw_table.append((src, dst, FWState[action]))
+
+    def send(self, p: Packet):
+        if self.id_table.fw_allows(p):
+            client.send(consts.DEFAULT_IP, self.id_table.get_next_hop(p.dest_id), p)
 
 
 def network_init(id, port) -> packet.Packet:
