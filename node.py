@@ -27,26 +27,30 @@ class IdRoute:
 
 
 class IdTable:
+    # todo loop back
     def __init__(self):
-        self.table: list[IdRoute] = []
+        self.default_gateway: tuple[int, int] = tuple()
+        self.routing_table: list[IdRoute] = []  # todo dict
+        self.known_hosts: set[int] = set()
         self.fw_table: list[tuple[Any, Any, FWState]] = []
 
     def get_next_hop(self, dest_id: int):
-        results = [route for route in self.table if route.dest == dest_id and route.state == FWState.ACCEPT]
+        if dest_id not in self.known_hosts:
+            return consts.NEXT_HOP_NOT_FOUND
+        results = [route for route in self.routing_table if route.dest == dest_id and route.state == FWState.ACCEPT]
         if results:
             return results[0].next_hop
-
-        return consts.NEXT_HOP_NOT_FOUND
+        return self.default_gateway
 
     def add_entry(self, dest_id: int, next_hop: (int, int)):
-        results = [route.next_hop for route in self.table if route.dest == dest_id]
+        results = [route.next_hop for route in self.routing_table if route.dest == dest_id]
         if next_hop in results:
             raise Exception("there is a loop")
-
-        self.table.append(IdRoute(dest_id, next_hop))
+        self.routing_table.append(IdRoute(dest_id, next_hop))
+        self.known_hosts.add(dest_id)
 
     def set_state(self, dest_id: int, state: FWState):
-        for route in self.table:
+        for route in self.routing_table:
             if route.dest == dest_id:
                 route.state = state
 
@@ -132,6 +136,7 @@ class Node:
     def routing_request_handle(self, p: Packet):
         if p.dest_id == self.id:
             sent_packet = Packet(PacketType.ROUTING_RESPONSE.value, self.id, p.src_id, f"{self.id}")
+            self.id_table.known_hosts.add(p.src_id)
         else:
             dest_id, _ = self.id_table.get_next_hop(p.dest_id)
             if dest_id == consts.NEXT_HOP_NOT_FOUND:
@@ -165,11 +170,11 @@ class Node:
                 data = str(self.id) + ' <- ' + data
             else:
                 data = str(self.id) + ' -> ' + data
-        if p.dest_id == self.id:
+        if int(p.dest_id) == int(self.id):
             print(data)
             return
-        route_packet = Packet(PacketType.ROUTING_RESPONSE, self.id, p.dest_id, data)
-        self.send(route_packet)
+        p.data = data
+        self.send(p)
 
     def fw_drop(self, dest_id):
         self.id_table.set_state(dest_id, FWState.DROP)
@@ -184,6 +189,12 @@ class Node:
             self.id_table.fw_table.append((self.id, dst, FWState[action]))
         elif dir == "FORWARD":
             self.id_table.fw_table.append((src, dst, FWState[action]))
+
+    def set_parent(self, pid: int, pport: int):
+        id, port = int(pid), int(pport)
+        self.parent = (id, port)
+        self.id_table.add_entry(id, self.parent)
+        self.id_table.default_gateway = (id, port)
 
     def send(self, p: Packet, port=None):
         if not self.id_table.fw_allows(p):
@@ -228,8 +239,7 @@ def main():
     if int(pid) == -1 and int(pport) == -1:
         node.parent = (consts.ROOT_PARENT_ID, consts.ROOT_PARENT_PORT)
     else:
-        node.parent = (int(pid), int(pport))
-        node.id_table.add_entry(int(node.parent[0]), node.parent)
+        node.set_parent(pid, pport)
 
     family_meeting(node.id, node.port, int(node.parent[0]), int(node.parent[1]))
 
