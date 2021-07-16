@@ -163,8 +163,9 @@ class Node:
 
     def routing_response_handle(self, p: Packet, is_not_found=False):
         data = p.data
-        if not (is_not_found or int(self.id) == int(p.dest_id) == int(p.src_id)):
-            if p.src_id == self.parent[0]:
+        prev_hop_id = int(self.id_table.get_next_hop(p.src_id)[0])
+        if not (is_not_found or int(self.id) == int(p.dest_id) == prev_hop_id):
+            if prev_hop_id == self.parent[0]:
                 data = str(self.id) + ' <- ' + data
             else:
                 data = str(self.id) + ' -> ' + data
@@ -172,7 +173,6 @@ class Node:
             print(data)
             return
         p.data = data
-        p.src_id = self.id
         self.send(p)
 
     def fw_drop(self, dest_id):
