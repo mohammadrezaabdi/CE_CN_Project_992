@@ -8,23 +8,40 @@ import constants as consts
 from packet import Packet, PacketType
 import client
 import ast
+from enum import Enum
 
 logger = logging.getLogger("node")
 
 
+class FWState(Enum):
+    ACCEPT= 0
+    DROP= 1
+
+
+class IdRoute:
+    def __init__(self, dest: int, next_hop: tuple[int, int], state: FWState = FWState.ACCEPT):
+        self.dest = dest
+        self.next_hop = next_hop
+        self.state = state
+
+
 class IdTable:
     def __init__(self):
-        self.table: dict[int, tuple[int, int]] = {}
+        self.table: list[IdRoute] = []
 
     def get_next_hop(self, dest_id: int):
-        if dest_id not in self.table:
-            return consts.NEXT_HOP_NOT_FOUND
-        return self.table[dest_id]
+        results = [route for route in self.table if route.dest == dest_id and route.state == FWState.ACCEPT]
+        if results:
+            return results[0].next_hop
+
+        return consts.NEXT_HOP_NOT_FOUND
 
     def add_entry(self, dest_id: int, next_hop: (int, int)):
-        if dest_id in self.table and self.table[dest_id] != next_hop:
+        results = [route.next_hop for route in self.table if route.dest == dest_id]
+        if next_hop in results:
             raise Exception("there is a loop")
-        self.table[dest_id] = next_hop
+
+        self.table.append(IdRoute(dest_id, next_hop))
 
 
 class Node:
@@ -92,7 +109,7 @@ class Node:
         client.send(consts.DEFAULT_IP, int(dest_port), sent_packet)
 
     def advertise_parent(self, src_id: int):
-        if self.parent[0] == consts.ROOT_PARENT_PORT:
+        if self.parent[0] == consts.ROOT_PARENT_ID:
             return
         advertise_parent_packet = Packet(PacketType.PARENT_ADVERTISE.value, self.id, self.parent[0], f"{src_id}")
         client.send(consts.DEFAULT_IP, int(self.parent[1]), advertise_parent_packet)
@@ -141,10 +158,10 @@ def network_init(id, port) -> packet.Packet:
         return Packet(**response)
 
 
-def family_meeting(myid: int, myport: int, pid: int, pport: int):
+def family_meeting(my_id: int, my_port: int, pid: int, pport: int):
     if pid == consts.ROOT_PARENT_ID:
         return
-    p = Packet(PacketType.CONNECTION_REQUEST.value, myid, pid, str(myport))
+    p = Packet(PacketType.CONNECTION_REQUEST.value, my_id, pid, str(my_port))
     client.send(consts.DEFAULT_IP, pport, p)
 
 
