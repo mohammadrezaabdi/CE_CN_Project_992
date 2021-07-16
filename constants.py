@@ -56,6 +56,8 @@ SALAM_RAW_REGEX = re.compile(r"^Salam Salam Sad Ta Salam$")
 SALAM_RESPONSE = "Hezaro Sisad Ta Salam"
 SALAM_RESPONSE_REGEX = re.compile(r"^Hezaro Sisad Ta Salam$", re.IGNORECASE)
 
+CHAT = "CHAT:\n"
+
 # START_CHAT.format(name="chat1", ids=", ".join(map(str,[3, 2, 5])))
 START_CHAT = "START CHAT {name}: {ids}"
 START_CHAT_REGEX = re.compile(r"^START CHAT (\w+): (.+)$")
@@ -64,17 +66,17 @@ REQ_FOR_CHAT = "CHAT:\nREQUESTS FOR STARTING CHAT WITH {name}: {ids}"
 REQ_FOR_CHAT_REGEX = re.compile(r"^CHAT:\nREQUESTS FOR STARTING CHAT WITH (\w+): (.+)$")
 
 ASK_JOIN_CHAT = (
-    "{chat_name} with id {id} has asked you to join a chat. Would you like to join?"
+    "{chat_name} with id {id} has asked you to join a chat. Would you like to join?[Y/N]"
 )
 ASK_JOIN_CHAT_REGEX = re.compile(
-    r"^(\w+) with id (-?\d+) has asked you to join a chat. Would you like to join?$"
+    r"^(\w+) with id (-?\d+) has asked you to join a chat. Would you like to join?[Y/N]$"
 )
 
 YES = "Y"
 YES_REGEX = re.compile(r"^Y$")
 
-YES = "N"
-YES_REGEX = re.compile(r"^N$")
+NO = "N"
+NO_REGEX = re.compile(r"^N$")
 
 CHOOSE_NAME_MSG = "Choose a name for yourself"
 

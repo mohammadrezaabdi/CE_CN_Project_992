@@ -2,6 +2,7 @@ import ast
 import logging
 import socket
 import threading
+from threading import Lock
 from enum import Enum
 from typing import Any
 import client
@@ -248,30 +249,91 @@ class Node:
                 print(consts.SALAM_RESPONSE, f"from {p.src_id}")
                 return
             elif consts.REQ_FOR_CHAT_REGEX.match(p.data):
-                return  # todo
+                elems = consts.REQ_FOR_CHAT_REGEX.findall(p.data)
+                ids = ast.literal_eval(f"[{elems[0][1]}]")
+                self.chat.start_chat(elems[0][0], ids)
+                return
+            elif consts.SET_NAME_REGEX.match(p.data) and self.chat.active != ChatState.INACTIVE:
+                elems = consts.SET_NAME_REGEX.findall(p.data)
+                self.chat.chat_list[int(elems[0][1])] = elems[0][0]
+                print(consts.JOINED_CHAT.format(chat_name=elems[0][0], id=elems[0][1]))
+                return
             else:
                 return
         self.send_packet(p)
 
 
+class ChatState(Enum):  # todo check all states again
+    INACTIVE = 0
+    PENDING = 1
+    ACTIVE = 2
+
+
 class Chat:
     def __init__(self, node: Node):
-        self.active = False
+        self.active: ChatState = ChatState.INACTIVE
         self.owner_name = ""
         self.name = ""
         self.node = node
         self.chat_list: dict[int, str] = {}
+        self.lock = Lock()
 
     def init_chat(self, owner_name: str, ids: list):
         self.owner_name = owner_name
         self.name = owner_name
-        self.chat_list[self.node.id] = owner_name
+        with self.lock:
+            self.active = ChatState.ACTIVE
+            self.chat_list[self.node.id] = owner_name
         for id in ids[1:]:
             _id = int(id)
-            self.chat_list[_id] = ""
+            with self.lock:
+                self.chat_list[_id] = ""
             self.node.send_packet(Packet(PacketType.MESSAGE.value, self.node.id, _id,
                                          consts.REQ_FOR_CHAT.format(name=owner_name,
                                                                     ids=(", ".join(map(str, ids))).strip())))
+
+    def start_chat(self, owner_name: str, ids: list):
+        self.owner_name = owner_name
+        with self.lock:
+            self.active = ChatState.PENDING
+            self.chat_list[ids[0]] = owner_name
+
+        for id in ids[1:]:
+            _id = int(id)
+            with self.lock:
+                self.chat_list[_id] = ""
+            self.node.id_table.known_hosts.add(_id)
+
+        while True:
+            print(consts.ASK_JOIN_CHAT.format(chat_name=owner_name, id=ids[0]))
+            is_join = input().strip().upper()
+            print(is_join)
+            if consts.YES_REGEX.match(is_join):
+                print(consts.CHOOSE_NAME_MSG)
+                name = input().strip()  # todo input blocked from client.py
+                print(name)
+                self.name = name
+                self.chat_list[self.node.id] = name
+                self.send_to_chat_list(consts.SET_NAME.format(id=self.node.id, chat_name=name))
+                with self.lock:
+                    self.active = ChatState.ACTIVE
+                return
+            elif consts.NO_REGEX.match(is_join):
+                with self.lock:
+                    self.clear_chat()
+                return
+
+    def send_to_chat_list(self, data: str):  # todo not working
+        for id, name in self.chat_list:
+            p = Packet(PacketType.MESSAGE.value, self.node.id, id, data)
+            print(p.__dict__)
+            self.node.send_packet(p)
+
+    def clear_chat(self):
+        self.active = ChatState.INACTIVE
+        self.owner_name = ""
+        self.name = ""
+        self.chat_list.clear()
 
 
 def network_init(id, port) -> packet.Packet:
