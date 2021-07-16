@@ -132,22 +132,20 @@ class Node:
     def routing_request_handle(self, p: Packet):
         if p.dest_id == self.id:
             sent_packet = Packet(PacketType.ROUTING_RESPONSE.value, self.id, p.src_id, f"{self.id}")
-            _, dest_port = self.id_table.get_next_hop(int(p.src_id))
         else:
-            dest_id, dest_port = self.id_table.get_next_hop(p.dest_id)
+            dest_id, _ = self.id_table.get_next_hop(p.dest_id)
             if dest_id == consts.NEXT_HOP_NOT_FOUND:
                 sent_packet = Packet(PacketType.DESTINATION_NOT_FOUND.value, self.id, p.src_id,
                                      consts.DEST_NOT_FOUND.format(id_dest=p.dest_id))
-                _, dest_port = self.id_table.get_next_hop(p.src_id)
             else:
                 sent_packet = p
-        client.send(consts.DEFAULT_IP, int(dest_port), sent_packet)
+        self.send(sent_packet)
 
     def advertise_parent(self, src_id: int):
         if self.parent[0] == consts.ROOT_PARENT_ID:
             return
         advertise_parent_packet = Packet(PacketType.PARENT_ADVERTISE.value, self.id, self.parent[0], f"{src_id}")
-        client.send(consts.DEFAULT_IP, int(self.parent[1]), advertise_parent_packet)
+        self.send(advertise_parent_packet, port=int(self.parent[1]))
 
     def advertise_parent_handle(self, p: Packet):
         if p.src_id == self.left_child[0]:
@@ -158,7 +156,7 @@ class Node:
         if self.parent[0] == consts.ROOT_PARENT_ID:
             return
         advertise_parent_packet = Packet(PacketType.PARENT_ADVERTISE.value, self.id, self.parent[0], f"{p.data}")
-        client.send(consts.DEFAULT_IP, int(self.parent[1]), advertise_parent_packet)
+        self.send(advertise_parent_packet, port=int(self.parent[1]))
 
     def routing_response_handle(self, p: Packet, is_not_found=False):
         data = p.data
@@ -171,7 +169,7 @@ class Node:
             print(data)
             return
         route_packet = Packet(PacketType.ROUTING_RESPONSE, self.id, p.dest_id, data)
-        client.send(consts.DEFAULT_IP, int(self.id_table.get_next_hop(p.dest_id)[1]), route_packet)
+        self.send(route_packet)
 
     def fw_drop(self, dest_id):
         self.id_table.set_state(dest_id, FWState.DROP)
@@ -187,9 +185,12 @@ class Node:
         elif dir == "FORWARD":
             self.id_table.fw_table.append((src, dst, FWState[action]))
 
-    def send(self, p: Packet):
-        if self.id_table.fw_allows(p):
-            client.send(consts.DEFAULT_IP, self.id_table.get_next_hop(p.dest_id), p)
+    def send(self, p: Packet, port=None):
+        if not self.id_table.fw_allows(p):
+            return
+        if not port:
+            port = self.id_table.get_next_hop(p.dest_id)
+        client.send(consts.DEFAULT_IP, port, p)
 
 
 def network_init(id, port) -> packet.Packet:
