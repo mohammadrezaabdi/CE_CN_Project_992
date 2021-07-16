@@ -4,7 +4,6 @@ import socket
 import threading
 from enum import Enum
 from typing import Any
-
 import client
 import constants as consts
 import log
@@ -92,6 +91,7 @@ class Node:
         self.parent = None
         self.server_socket = Server(consts.DEFAULT_IP, port, self.handler, logger)
         self.id_table.add_entry(ID, (ID, port))
+        self.chat: Chat = Chat(self)
 
     def handler(self, conn: socket.socket):
         logger.debug("handling new client")
@@ -247,7 +247,31 @@ class Node:
             elif consts.SALAM_RESPONSE_REGEX.match(p.data):
                 print(consts.SALAM_RESPONSE, f"from {p.src_id}")
                 return
+            elif consts.REQ_FOR_CHAT_REGEX.match(p.data):
+                return  # todo
+            else:
+                return
         self.send_packet(p)
+
+
+class Chat:
+    def __init__(self, node: Node):
+        self.active = False
+        self.owner_name = ""
+        self.name = ""
+        self.node = node
+        self.chat_list: dict[int, str] = {}
+
+    def init_chat(self, owner_name: str, ids: list):
+        self.owner_name = owner_name
+        self.name = owner_name
+        self.chat_list[self.node.id] = owner_name
+        for id in ids[1:]:
+            _id = int(id)
+            self.chat_list[_id] = ""
+            self.node.send_packet(Packet(PacketType.MESSAGE.value, self.node.id, _id,
+                                         consts.REQ_FOR_CHAT.format(name=owner_name,
+                                                                    ids=(", ".join(map(str, ids))).strip())))
 
 
 def network_init(id, port) -> packet.Packet:

@@ -1,8 +1,8 @@
+import ast
 import logging
 import re
 import socket
 import time
-
 import constants as consts
 from node import Node
 from packet import *
@@ -34,12 +34,10 @@ def handle_user_commands(node: Node):
             node.send_packet_util(PacketType.ADVERTISE, consts.SEND_ALL)
         elif consts.SALAM_REGEX.match(cmd):
             node.send_packet_util(PacketType.MESSAGE, int(consts.SALAM_REGEX.findall(cmd)[0]), consts.SALAM)
-        elif consts.CHAT_REGEX.match(cmd):
-            pass
         elif consts.START_CHAT_REGEX.match(cmd):
-            pass
-        elif consts.REQ_FOR_CHAT_REGEX.match(cmd):
-            pass
+            elems = consts.START_CHAT_REGEX.findall(cmd)
+            ids = ast.literal_eval(f"[{elems[0][1]}]")
+            node.chat.init_chat(elems[0][0], ids)
         elif consts.ASK_JOIN_CHAT_REGEX.match(cmd):
             pass
         elif consts.YES_REGEX.match(cmd):

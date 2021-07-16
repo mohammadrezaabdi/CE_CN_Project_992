@@ -56,14 +56,12 @@ SALAM_RAW_REGEX = re.compile(r"^Salam Salam Sad Ta Salam$")
 SALAM_RESPONSE = "Hezaro Sisad Ta Salam"
 SALAM_RESPONSE_REGEX = re.compile(r"^Hezaro Sisad Ta Salam$", re.IGNORECASE)
 
-CHAT_REGEX = re.compile(r"^CHAT: $")
-
 # START_CHAT.format(name="chat1", ids=", ".join(map(str,[3, 2, 5])))
 START_CHAT = "START CHAT {name}: {ids}"
 START_CHAT_REGEX = re.compile(r"^START CHAT (\w+): (.+)$")
 
-REQ_FOR_CHAT = "REQUESTS FOR STARTING CHAT WITH {name}: {ids}"
-REQ_FOR_CHAT_REGEX = re.compile(r"^REQUESTS FOR STARTING CHAT WITH (\w+): (.+)$")
+REQ_FOR_CHAT = "CHAT:\nREQUESTS FOR STARTING CHAT WITH {name}: {ids}"
+REQ_FOR_CHAT_REGEX = re.compile(r"^CHAT:\nREQUESTS FOR STARTING CHAT WITH (\w+): (.+)$")
 
 ASK_JOIN_CHAT = (
     "{chat_name} with id {id} has asked you to join a chat. Would you like to join?"
@@ -80,18 +78,18 @@ YES_REGEX = re.compile(r"^N$")
 
 CHOOSE_NAME_MSG = "Choose a name for yourself"
 
-SET_NAME = "{id} :{chat_name}"
-SET_NAME_REGEX = re.compile(r"(-?\d+) :(\w+)$")
+SET_NAME = "CHAT:\n{id} :{chat_name}"
+SET_NAME_REGEX = re.compile(r"CHAT:\n(-?\d+) :(\w+)$")
 
 JOINED_CHAT = "{chat_name}({id}) was joind to the chat."
 
-SHOW_MSG = "{chat_name}: {message}"
-SHOW_MSG_REGEX = re.compile(r"^(\w+): (.*)$")
+SHOW_MSG = "CHAT:\n{chat_name}: {message}"
+SHOW_MSG_REGEX = re.compile(r"CHAT:\n^(\w+): (.*)$")
 
 EXIT_CHAT_MSG = "EXIT CHAT"
 
-EXIT_CHAT = "EXIT CHAT {id}"
-EXIT_CHAT_REGEX = re.compile(r"^EXIT CHAT (-?\d+)$")
+EXIT_CHAT = "CHAT:\nEXIT CHAT {id}"
+EXIT_CHAT_REGEX = re.compile(r"CHAT:\n^EXIT CHAT (-?\d+)$")
 
 LEFT_CHAT = "{chat_name}({id}) left the chat."
 LEFT_CHAT_REGEX = re.compile(r"^(\w+)((-?\d+)) left the chat.$")
