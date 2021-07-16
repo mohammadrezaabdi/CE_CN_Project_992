@@ -266,7 +266,12 @@ def family_meeting(my_id: int, my_port: int, pid: int, pport: int):
 
 def main():
     cmd = input()
-    [(id, port)] = consts.CONNECT_REGEX.findall(cmd)
+    try:
+        [(id, port)] = consts.CONNECT_REGEX.findall(cmd)
+    except Exception as e:
+        [(id)] = consts.CONNECT_PORT_LESS_REGEX.findall(cmd)
+        port = 10000 + int(id) * 10
+
     p = network_init(id, port)
     [(pid, pport)] = consts.CONNECT_ACCEPT_REGEX.findall(p.data)
     node = Node(int(id), int(port))

@@ -23,6 +23,8 @@ packet_type = {
 # usage --> CONNECT.format(id = 10 , port = 20)
 CONNECT = "CONNECT AS {id} ON PORT {port}"
 CONNECT_REGEX = re.compile(r"^CONNECT AS (\d+) ON PORT (\d+)$")
+CONNECT_PORT_LESS = "{id}"
+CONNECT_PORT_LESS_REGEX = re.compile(r"^(\d+)$")
 
 CONNECT_REQUEST = "{id} REQUESTS FOR CONNECTING TO NETWORK ON PORT {port}"
 CONNECT_REQUEST_REGEX = re.compile(
@@ -112,7 +114,7 @@ CHAT_IS_DISABLE = "Chat is disabled. Make sure the firewall allows you to chat."
 LOG_TEMPLATE = "{type} Packet from {id_src} to {id_dest}"
 
 MANAGER_IP = "127.0.0.1"
-MANAGER_PORT = 8559
+MANAGER_PORT = 8558
 DEFAULT_IP = MANAGER_IP
 
 BUFFER_SIZE = 1024

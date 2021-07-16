@@ -5,6 +5,8 @@ loggers = ["manager", "client", "server", "node"]
 STD_LOG_LEVEL = logging.DEBUG
 FILE_LOG_LEVEL = logging.INFO
 
+lock = 0
+
 
 class LoggerFormatter(logging.Formatter):
     name_just = 20
@@ -13,9 +15,9 @@ class LoggerFormatter(logging.Formatter):
     def format(self, record):
         time = self.formatTime(record, self.datefmt)
         return (
-            f"===[{time}]===[{record.name}]".ljust(self.name_just, "=")
-            + f"===[{record.levelname}]===".ljust(self.level_just, "=")
-            + f" {record.getMessage()} :: ({record.filename}:{record.lineno})"
+                f"===[{time}]===[{record.name}]".ljust(self.name_just, "=")
+                + f"===[{record.levelname}]===".ljust(self.level_just, "=")
+                + f" {record.getMessage()} :: ({record.filename}:{record.lineno})"
         )
 
 
@@ -23,6 +25,10 @@ default_format = LoggerFormatter()
 
 
 def init():
+    global lock
+    lock += 1
+    if lock == 2:
+        return
     # setting logger
     stdout_h = logging.StreamHandler()
     filelg_h = logging.FileHandler(f"{LOG_DIR}/network.log")
