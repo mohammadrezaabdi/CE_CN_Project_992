@@ -204,7 +204,7 @@ class Node:
             try:
                 port = int(self.id_table.get_next_hop(p.dest_id)[1])
             except Exception as e:
-                print(consts.DEST_NOT_FOUND.format(id_dest=p.dest_id))
+                print(consts.UNKNOWN_DEST.format(id_dest=p.dest_id))
 
                 p = Packet(PacketType.DESTINATION_NOT_FOUND.value, self.id, p.src_id,
                            consts.DEST_NOT_FOUND.format(id_dest=p.dest_id))
