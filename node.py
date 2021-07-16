@@ -27,7 +27,6 @@ class IdRoute:
 
 
 class IdTable:
-    # todo loop back
     def __init__(self):
         self.default_gateway: tuple[int, int] = tuple()
         self.routing_table: list[IdRoute] = []  # todo dict
