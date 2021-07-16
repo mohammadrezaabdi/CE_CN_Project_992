@@ -189,7 +189,7 @@ class Node:
         if not self.id_table.fw_allows(p):
             return
         if not port:
-            port = self.id_table.get_next_hop(p.dest_id)
+            port = int(self.id_table.get_next_hop(p.dest_id)[1])
         client.send(consts.DEFAULT_IP, port, p)
 
 
