@@ -1,15 +1,15 @@
+import ast
+import logging
 import socket
 import threading
-import logging
+from enum import Enum
 from typing import Any
 
-import packet
-from server import Server
-import constants as consts
-from packet import Packet, PacketType
 import client
-import ast
-from enum import Enum
+import constants as consts
+import packet
+from packet import Packet, PacketType
+from server import Server
 
 logger = logging.getLogger("node")
 
@@ -28,6 +28,7 @@ class IdRoute:
 
 class IdTable:
     def __init__(self):
+        # todo known chat
         self.default_gateway: tuple[int, int] = tuple()
         self.routing_table: list[IdRoute] = []  # todo dict
         self.known_hosts: set[int] = set()
@@ -120,6 +121,8 @@ class Node:
                     self.advertise_parent_handle(packet)
                 elif packet.p_type == PacketType.DESTINATION_NOT_FOUND:
                     self.routing_response_handle(packet, True)
+                elif packet.p_type == PacketType.ADVERTISE:
+                    self.advertise_handle(packet)
 
             except Exception as e:
                 raise Exception(e)
@@ -138,12 +141,7 @@ class Node:
             sent_packet = Packet(PacketType.ROUTING_RESPONSE.value, self.id, p.src_id, f"{self.id}")
             self.id_table.known_hosts.add(p.src_id)
         else:
-            dest_id, _ = self.id_table.get_next_hop(p.dest_id)
-            if dest_id == consts.NEXT_HOP_NOT_FOUND:
-                sent_packet = Packet(PacketType.DESTINATION_NOT_FOUND.value, self.id, p.src_id,
-                                     consts.DEST_NOT_FOUND.format(id_dest=p.dest_id))
-            else:
-                sent_packet = p
+            sent_packet = p
         self.send(sent_packet)
 
     def advertise_parent(self, src_id: int):
@@ -201,8 +199,41 @@ class Node:
         if not self.id_table.fw_allows(p):
             return
         if not port:
-            port = int(self.id_table.get_next_hop(p.dest_id)[1])
+            try:
+                port = int(self.id_table.get_next_hop(p.dest_id)[1])
+            except Exception as e:
+                print(consts.DEST_NOT_FOUND.format(id_dest=p.dest_id))
+
+                p = Packet(PacketType.DESTINATION_NOT_FOUND.value, self.id, p.src_id,
+                           consts.DEST_NOT_FOUND.format(id_dest=p.dest_id))
+                port = int(self.id_table.get_next_hop(p.dest_id)[1])
         client.send(consts.DEFAULT_IP, port, p)
+
+    def send_packet(self, p_type: PacketType, dest_id: int, data: str = ""):
+        sent_packet = Packet(p_type.value, self.id, int(dest_id), data)
+        if dest_id == consts.SEND_ALL:
+            hops = set([route.next_hop for route in self.id_table.routing_table])
+            for hop in hops:
+                self.send(sent_packet, port=int(hop[1]))
+            return
+
+        self.send(sent_packet)
+
+    def advertise_handle(self, p: Packet):
+        if p.dest_id == self.id or p.src_id == self.id:
+            self.id_table.known_hosts.add(p.src_id)
+            return
+
+        if p.dest_id == consts.SEND_ALL:
+            self.id_table.known_hosts.add(p.src_id)
+            hops = set([route.next_hop for route in self.id_table.routing_table])
+            hops.remove(self.id_table.get_next_hop(p.src_id))
+            hops.remove((self.id, self.port))
+            for hop in hops:
+                self.send(p, port=hop[1])
+            return
+
+        self.send(p)
 
 
 def network_init(id, port) -> packet.Packet:

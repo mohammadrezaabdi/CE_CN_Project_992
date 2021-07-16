@@ -44,7 +44,7 @@ ROUTE = "ROUTE {id}"
 ROUTE_REGEX = re.compile(r"^ROUTE (-?\d+)$")
 
 ADVERTISE = "Advertise {id}"
-ADVERTISE_REGEX = re.compile(r"^Advertise (-?\d+)$")
+ADVERTISE_REGEX = re.compile(r"^ADVERTISE (-?\d+)$")
 
 SALAM = "Salam Salam Sad Ta Salam"
 SALAM_REGEX = re.compile(r"^Salam Salam Sad Ta Salam$")
@@ -112,7 +112,7 @@ CHAT_IS_DISABLE = "Chat is disabled. Make sure the firewall allows you to chat."
 LOG_TEMPLATE = "{type} Packet from {id_src} to {id_dest}"
 
 MANAGER_IP = "127.0.0.1"
-MANAGER_PORT = 8558
+MANAGER_PORT = 8559
 DEFAULT_IP = MANAGER_IP
 
 BUFFER_SIZE = 1024
@@ -121,3 +121,5 @@ ROOT_PARENT_ID = -2
 ROOT_PARENT_PORT = -2
 
 NEXT_HOP_NOT_FOUND = -3
+
+SEND_ALL = -1

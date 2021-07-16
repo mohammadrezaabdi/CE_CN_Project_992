@@ -1,9 +1,10 @@
 import logging
+import re
 import socket
 import time
-import re
-from node import Node
+
 import constants as consts
+from node import Node
 from packet import *
 
 logger = logging.getLogger("client")
@@ -22,43 +23,37 @@ def send(ip: str, port: int, packet: Packet):
                 logger.exception("waiting for server...")
 
 
-def send_route_message(dest_id: int, node: Node):
-    sent_packet = Packet(PacketType.ROUTING_REQUEST.value, node.id, int(dest_id), f"")
-    try:
-        send(consts.DEFAULT_IP, node.id_table.get_next_hop(dest_id)[1], sent_packet)
-    except Exception as e:
-        print(consts.DEST_NOT_FOUND.format(id_dest=dest_id))
-
-
 def handle_user_commands(node: Node):
     while True:
         cmd = input().strip()
         if consts.ROUTE_REGEX.match(cmd):
-            send_route_message(int(re.findall(consts.ROUTE_REGEX, cmd)[0]), node)
-        if consts.ADVERTISE_REGEX.match(cmd):
+            node.send_packet(PacketType.ROUTING_REQUEST, int(re.findall(consts.ROUTE_REGEX, cmd)[0]))
+        elif consts.ADVERTISE_REGEX.match(cmd):
+            node.send_packet(PacketType.ADVERTISE, int(consts.ADVERTISE_REGEX.findall(cmd)[0]))
+        elif consts.SALAM_REGEX.match(cmd):
             pass
-        if consts.SALAM_REGEX.match(cmd):
+        elif consts.CHAT_REGEX.match(cmd):
             pass
-        if consts.CHAT_REGEX.match(cmd):
+        elif consts.START_CHAT_REGEX.match(cmd):
             pass
-        if consts.START_CHAT_REGEX.match(cmd):
+        elif consts.REQ_FOR_CHAT_REGEX.match(cmd):
             pass
-        if consts.REQ_FOR_CHAT_REGEX.match(cmd):
+        elif consts.ASK_JOIN_CHAT_REGEX.match(cmd):
             pass
-        if consts.ASK_JOIN_CHAT_REGEX.match(cmd):
+        elif consts.YES_REGEX.match(cmd):
             pass
-        if consts.YES_REGEX.match(cmd):
+        elif consts.SET_NAME_REGEX.match(cmd):
             pass
-        if consts.SET_NAME_REGEX.match(cmd):
+        elif consts.EXIT_CHAT_REGEX.match(cmd):
             pass
-        if consts.EXIT_CHAT_REGEX.match(cmd):
-            pass
-        if consts.FILTER_REGEX.match(cmd):
+        elif consts.FILTER_REGEX.match(cmd):
             dir, src, dst, action = consts.FILTER_REGEX.findall(cmd)
             if src == "*":
                 src = None
             if dst == "*":
                 dst = None
             node.set_fw_rule(dir, src, dst, action)
-        if consts.FW_CHAT_REGEX.match(cmd):
+        elif consts.FW_CHAT_REGEX.match(cmd):
             pass
+        elif consts.SHOW_KNOWN_CLIENTS_REGEX.match(cmd):
+            print(node.id_table.known_hosts)
