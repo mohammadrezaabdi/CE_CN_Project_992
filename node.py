@@ -218,11 +218,11 @@ class Node:
                 port = int(self.id_table.get_next_hop(p.dest_id)[1])
         client.send(consts.DEFAULT_IP, port, p)
 
-    def send_packet(self, p_type: PacketType, dest_id: int, data: str = ""):
+    def send_packet_util(self, p_type: PacketType, dest_id: int, data: str = ""):
         sent_packet = Packet(p_type.value, self.id, int(dest_id), data)
-        self.send_packet_util(sent_packet)
+        self.send_packet(sent_packet)
 
-    def send_packet_util(self, p: Packet):
+    def send_packet(self, p: Packet):
         if int(p.dest_id) == consts.SEND_ALL:
             hops = set([route.next_hop for route in self.id_table.routing_table])
             hops.discard(self.id_table.get_next_hop(p.src_id))
@@ -235,19 +235,11 @@ class Node:
     def advertise_handle(self, p: Packet):
         if p.dest_id == self.id or p.src_id == self.id:
             return
-
-        if p.dest_id == consts.SEND_ALL:
-            hops = set([route.next_hop for route in self.id_table.routing_table])
-            hops.remove(self.id_table.get_next_hop(p.src_id))
-            hops.remove((self.id, self.port))
-            for hop in hops:
-                self.send(p, port=hop[1])
-            return
-        self.send(p)
+        self.send_packet(p)
 
     def message_handle(self, p: Packet):
         if p.dest_id == consts.SEND_ALL:
-            self.send_packet_util(p)
+            self.send_packet(p)
         if p.dest_id == self.id or p.dest_id == consts.SEND_ALL:
             if consts.SALAM_RAW_REGEX.match(p.data):
                 print(consts.SALAM, f"from {p.src_id}")
@@ -255,7 +247,7 @@ class Node:
             elif consts.SALAM_RESPONSE_REGEX.match(p.data):
                 print(consts.SALAM_RESPONSE, f"from {p.src_id}")
                 return
-        self.send_packet_util(p)
+        self.send_packet(p)
 
 
 def network_init(id, port) -> packet.Packet:

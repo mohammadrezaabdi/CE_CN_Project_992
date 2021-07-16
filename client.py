@@ -27,13 +27,13 @@ def handle_user_commands(node: Node):
     while True:
         cmd = input().strip().upper()
         if consts.ROUTE_REGEX.match(cmd):
-            node.send_packet(PacketType.ROUTING_REQUEST, int(re.findall(consts.ROUTE_REGEX, cmd)[0]))
+            node.send_packet_util(PacketType.ROUTING_REQUEST, int(re.findall(consts.ROUTE_REGEX, cmd)[0]))
         elif consts.ADVERTISE_REGEX.match(cmd):
-            node.send_packet(PacketType.ADVERTISE, int(consts.ADVERTISE_REGEX.findall(cmd)[0]))
+            node.send_packet_util(PacketType.ADVERTISE, int(consts.ADVERTISE_REGEX.findall(cmd)[0]))
         elif consts.ADVERTISE_ALL_REGEX.match(cmd):
-            node.send_packet(PacketType.ADVERTISE, consts.SEND_ALL)
+            node.send_packet_util(PacketType.ADVERTISE, consts.SEND_ALL)
         elif consts.SALAM_REGEX.match(cmd):
-            node.send_packet(PacketType.MESSAGE, int(consts.SALAM_REGEX.findall(cmd)[0]), consts.SALAM)
+            node.send_packet_util(PacketType.MESSAGE, int(consts.SALAM_REGEX.findall(cmd)[0]), consts.SALAM)
         elif consts.CHAT_REGEX.match(cmd):
             pass
         elif consts.START_CHAT_REGEX.match(cmd):
