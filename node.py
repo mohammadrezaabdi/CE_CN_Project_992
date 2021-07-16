@@ -63,22 +63,22 @@ class IdTable:
         # both dst and src are valid ids
         rules = [rule for rule in self.fw_table if rule[0] == src and rule[1] == dst]
         if rules:
-            return (True, False)[rules[0][2] == FWState.DROP]
+            return (True, False)[rules[-1][2] == FWState.DROP]
 
         # src is match all
-        rules = [rule for rule in self.fw_table if not rule[0] and rule[1] == dst]
+        rules = [rule for rule in self.fw_table if rule[0] == consts.SEND_ALL and rule[1] == dst]
         if rules:
-            return (True, False)[rules[0][2] == FWState.DROP]
+            return (True, False)[rules[-1][2] == FWState.DROP]
 
         # dst is match all
-        rules = [rule for rule in self.fw_table if not rule[1] and rule[0] == src]
+        rules = [rule for rule in self.fw_table if rule[1] == consts.SEND_ALL and rule[0] == src]
         if rules:
-            return (True, False)[rules[0][2] == FWState.DROP]
+            return (True, False)[rules[-1][2] == FWState.DROP]
 
         # dst and src are both match all
-        rules = [rule for rule in self.fw_table if not rule[1] and not rule[0]]
+        rules = [rule for rule in self.fw_table if rule[1] == consts.SEND_ALL and rule[0] == consts.SEND_ALL]
         if rules:
-            return (True, False)[rules[0][2] == FWState.DROP]
+            return (True, False)[rules[-1][2] == FWState.DROP]
         return True
 
 
@@ -105,6 +105,7 @@ class Node:
                 logger.debug(f"received message is:{data}")
                 packet = Packet(**data)
 
+                # firewall check
                 if not self.id_table.fw_allows(packet):
                     return
 
@@ -184,6 +185,8 @@ class Node:
         self.id_table.set_state(dest_id, FWState.ACCEPT)
 
     def set_fw_rule(self, dir, src, dst, action):
+        src = int(src)
+        dst = int(dst)
         if dir == "INPUT":
             self.id_table.fw_table.append((src, self.id, FWState[action]))
         elif dir == "OUTPUT":
@@ -198,6 +201,7 @@ class Node:
         self.id_table.default_gateway = (id, port)
 
     def send(self, p: Packet, port=None):
+        # firewall check
         if not self.id_table.fw_allows(p):
             return
         if not port:

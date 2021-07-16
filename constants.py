@@ -45,6 +45,7 @@ DEST_NOT_FOUND_REGEX = re.compile(r"^DESTINATION (-?\d+) NOT FOUND$")
 ROUTE = "ROUTE {id}"
 ROUTE_REGEX = re.compile(r"^ROUTE (-?\d+)$")
 
+ADVERTISE_ALL_REGEX = re.compile(r"^(-1)$")
 ADVERTISE = "Advertise {id}"
 ADVERTISE_REGEX = re.compile(r"^ADVERTISE (-?\d+)$")
 
@@ -96,7 +97,7 @@ LEFT_CHAT_REGEX = re.compile(r"^(\w+)((-?\d+)) left the chat.$")
 
 FILTER = "FILTER {direction} {src_id} {dest_id} {type} {action}"
 FILTER_REGEX = re.compile(
-    r"^FILTER (INPUT|OUTPUT|FORWARD) ([-?\d+|*]) ([-?\d+|*]) (ACCEPT|DROP)$"
+    r"^FILTER (INPUT|OUTPUT|FORWARD) (-?\d+|\*) (-?\d+|\*) (ACCEPT|DROP)$"
 )
 
 FW_CHAT = "FW CHAT {action}"

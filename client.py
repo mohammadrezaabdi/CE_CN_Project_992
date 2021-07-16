@@ -25,11 +25,13 @@ def send(ip: str, port: int, packet: Packet):
 
 def handle_user_commands(node: Node):
     while True:
-        cmd = input().strip()
+        cmd = input().strip().upper()
         if consts.ROUTE_REGEX.match(cmd):
             node.send_packet(PacketType.ROUTING_REQUEST, int(re.findall(consts.ROUTE_REGEX, cmd)[0]))
         elif consts.ADVERTISE_REGEX.match(cmd):
             node.send_packet(PacketType.ADVERTISE, int(consts.ADVERTISE_REGEX.findall(cmd)[0]))
+        elif consts.ADVERTISE_ALL_REGEX.match(cmd):
+            node.send_packet(PacketType.ADVERTISE, consts.SEND_ALL)
         elif consts.SALAM_REGEX.match(cmd):
             pass
         elif consts.CHAT_REGEX.match(cmd):
@@ -47,11 +49,11 @@ def handle_user_commands(node: Node):
         elif consts.EXIT_CHAT_REGEX.match(cmd):
             pass
         elif consts.FILTER_REGEX.match(cmd):
-            dir, src, dst, action = consts.FILTER_REGEX.findall(cmd)
+            [(dir, src, dst, action)] = consts.FILTER_REGEX.findall(cmd)
             if src == "*":
-                src = None
+                src = consts.SEND_ALL
             if dst == "*":
-                dst = None
+                dst = consts.SEND_ALL
             node.set_fw_rule(dir, src, dst, action)
         elif consts.FW_CHAT_REGEX.match(cmd):
             pass
