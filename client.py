@@ -29,7 +29,7 @@ def send(ip: str, port: int, packet: Packet):
 def handle_user_commands(node: Node):
     global chat_input
     while True:
-        cmd = input().strip().upper()
+        cmd = input().strip().upper()  # todo not upper case
         if node.chat.state == ChatState.PENDING:
             cmd_sema.release()
             chat_input = cmd

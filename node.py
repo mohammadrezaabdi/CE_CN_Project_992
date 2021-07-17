@@ -255,15 +255,15 @@ class Node:
                 return
             elif consts.SET_NAME_REGEX.match(p.data) and self.chat.state != ChatState.INACTIVE:
                 elems = consts.SET_NAME_REGEX.findall(p.data)
-                self.chat.chat_list[int(elems[0][1])] = elems[0][0]
-                print(consts.JOINED_CHAT.format(chat_name=elems[0][0], id=elems[0][1]))
+                self.chat.chat_list[int(elems[0][0])] = elems[0][1]
+                print(consts.JOINED_CHAT.format(chat_name=elems[0][1], id=elems[0][0]))
                 return
             else:
                 return
         self.send_packet(p)
 
 
-class ChatState(IntEnum):  # todo check all states again
+class ChatState(IntEnum):
     INACTIVE = 0
     PENDING = 1
     ACTIVE = 2
@@ -313,20 +313,21 @@ class Chat:
                 client.cmd_sema.acquire()
                 name = client.chat_input
                 self.name = name
-                self.chat_list[self.node.id] = name
-                self.send_to_chat_list(consts.SET_NAME.format(id=self.node.id, chat_name=name))
                 with self.lock:
+                    self.chat_list[self.node.id] = name
                     self.state = ChatState.ACTIVE
+                self.send_to_chat_list(consts.SET_NAME.format(id=self.node.id, chat_name=name))
                 return
             elif consts.NO_REGEX.match(is_join):
                 with self.lock:
                     self.clear_chat()
                 return
 
-    def send_to_chat_list(self, data: str):  # todo not working
-        for id, name in self.chat_list:
+    def send_to_chat_list(self, data: str):
+        for id, name in self.chat_list.items():
+            if int(id) == self.node.id:
+                continue
             p = Packet(PacketType.MESSAGE.value, self.node.id, id, data)
-            print(p.__dict__)
             self.node.send_packet(p)
 
     def clear_chat(self):
