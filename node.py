@@ -116,8 +116,6 @@ class Node:
                 if packet.p_type == PacketType.CONNECTION_REQUEST:
                     self.connection_request_handle(packet)
                     self.advertise_parent(packet.src_id)
-                elif packet.p_type == PacketType.CONNECTION_RESPONSE:
-                    pass
                 elif packet.p_type == PacketType.MESSAGE:
                     self.message_handle(packet)
                 elif packet.p_type == PacketType.ROUTING_REQUEST:
@@ -248,7 +246,7 @@ class Node:
             elif consts.SALAM_RESPONSE_REGEX.match(p.data):
                 print(consts.SALAM_RESPONSE, f"from {p.src_id}")
                 return
-            elif consts.REQ_FOR_CHAT_REGEX.match(p.data):
+            elif consts.REQ_FOR_CHAT_REGEX.match(p.data):  # todo check is in your chat message
                 elems = consts.REQ_FOR_CHAT_REGEX.findall(p.data)
                 ids = ast.literal_eval(f"[{elems[0][1]}]")
                 self.chat.start_chat(elems[0][0], ids)
@@ -257,6 +255,11 @@ class Node:
                 elems = consts.SET_NAME_REGEX.findall(p.data)
                 self.chat.chat_list[int(elems[0][0])] = elems[0][1]
                 print(consts.JOINED_CHAT.format(chat_name=elems[0][1], id=elems[0][0]))
+                return
+            elif consts.EXIT_CHAT_REGEX.match(p.data) and self.chat.state != ChatState.INACTIVE:
+                id = int(consts.EXIT_CHAT_REGEX.findall(p.data)[0][0])
+                name = self.chat.chat_list.pop(id)
+                print(consts.LEFT_CHAT.format(chat_name=name, id=id))
                 return
             elif consts.SHOW_MSG_REGEX.match(p.data) and self.chat.state == ChatState.ACTIVE:
                 raw = consts.SHOW_MSG_REGEX.findall(p.data)[0]
@@ -329,6 +332,8 @@ class Chat:
                 return
 
     def send_to_chat_list(self, data: str):  # todo not joined in chat list
+        if self.state == ChatState.INACTIVE:
+            return
         for id, name in self.chat_list.items():
             if int(id) == self.node.id:
                 continue

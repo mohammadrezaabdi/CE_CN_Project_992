@@ -46,10 +46,9 @@ def handle_user_commands(node: Node):
             elems = consts.START_CHAT_REGEX.findall(cmd)
             ids = ast.literal_eval(f"[{elems[0][1]}]")
             node.chat.init_chat(elems[0][0], ids)
-        elif consts.SET_NAME_REGEX.match(cmd):
-            pass
-        elif consts.EXIT_CHAT_REGEX.match(cmd):
-            pass
+        elif consts.EXIT_CHAT_MSG_REGEX.match(cmd):
+            node.chat.send_to_chat_list(consts.EXIT_CHAT.format(id=node.id))
+            node.chat.clear_chat()
         elif consts.FILTER_REGEX.match(cmd):
             [(dir, src, dst, action)] = consts.FILTER_REGEX.findall(cmd)
             if src == "*":
