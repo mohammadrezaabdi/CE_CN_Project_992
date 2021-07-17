@@ -61,4 +61,4 @@ def handle_user_commands(node: Node):
         elif consts.SHOW_KNOWN_CLIENTS_REGEX.match(cmd):
             print(node.id_table.known_hosts)
         elif node.chat.state == ChatState.ACTIVE:
-            node.chat.send_to_chat_list(consts.CHAT + cmd)
+            node.chat.send_to_chat_list(consts.CHAT + cmd, is_broadcast=False)

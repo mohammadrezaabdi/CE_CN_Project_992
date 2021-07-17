@@ -246,22 +246,30 @@ class Node:
             elif consts.SALAM_RESPONSE_REGEX.match(p.data):
                 print(consts.SALAM_RESPONSE, f"from {p.src_id}")
                 return
-            elif consts.REQ_FOR_CHAT_REGEX.match(p.data):  # todo check is in your chat message
+            elif consts.REQ_FOR_CHAT_REGEX.match(p.data):
+                if self.chat.state != ChatState.INACTIVE:
+                    return
                 elems = consts.REQ_FOR_CHAT_REGEX.findall(p.data)
                 ids = ast.literal_eval(f"[{elems[0][1]}]")
                 self.chat.start_chat(elems[0][0], ids)
                 return
             elif consts.SET_NAME_REGEX.match(p.data) and self.chat.state != ChatState.INACTIVE:
+                if not self.chat.is_in_your_chat(p):  # check if this packet belongs to your chat
+                    return
                 elems = consts.SET_NAME_REGEX.findall(p.data)
                 self.chat.chat_list[int(elems[0][0])] = elems[0][1]
                 print(consts.JOINED_CHAT.format(chat_name=elems[0][1], id=elems[0][0]))
                 return
             elif consts.EXIT_CHAT_REGEX.match(p.data) and self.chat.state != ChatState.INACTIVE:
+                if not self.chat.is_in_your_chat(p):  # check if this packet belongs to your chat
+                    return
                 id = int(consts.EXIT_CHAT_REGEX.findall(p.data)[0][0])
                 name = self.chat.chat_list.pop(id)
                 print(consts.LEFT_CHAT.format(chat_name=name, id=id))
                 return
             elif consts.SHOW_MSG_REGEX.match(p.data) and self.chat.state == ChatState.ACTIVE:
+                if not self.chat.is_in_your_chat(p):  # check if this packet belongs to your chat
+                    return
                 raw = consts.SHOW_MSG_REGEX.findall(p.data)[0]
                 src_name = self.chat.chat_list[int(p.src_id)]
                 print(consts.SHOW_MSG.format(chat_name=src_name, message=raw))
@@ -293,12 +301,9 @@ class Chat:
             self.state = ChatState.ACTIVE
             self.chat_list[self.node.id] = owner_name
         for id in ids[1:]:
-            _id = int(id)
             with self.lock:
-                self.chat_list[_id] = ""
-            self.node.send_packet(Packet(PacketType.MESSAGE.value, self.node.id, _id,
-                                         consts.REQ_FOR_CHAT.format(name=owner_name,
-                                                                    ids=(", ".join(map(str, ids))).strip())))
+                self.chat_list[int(id)] = ""
+        self.send_to_chat_list(consts.REQ_FOR_CHAT.format(name=owner_name, ids=(", ".join(map(str, ids))).strip()))
 
     def start_chat(self, owner_name: str, ids: list):
         self.owner_name = owner_name
@@ -331,11 +336,11 @@ class Chat:
                     self.clear_chat()
                 return
 
-    def send_to_chat_list(self, data: str):  # todo not joined in chat list
+    def send_to_chat_list(self, data: str, is_broadcast: bool = True):
         if self.state == ChatState.INACTIVE:
             return
         for id, name in self.chat_list.items():
-            if int(id) == self.node.id:
+            if int(id) == self.node.id or (not is_broadcast and name == ""):
                 continue
             p = Packet(PacketType.MESSAGE.value, self.node.id, id, data)
             self.node.send_packet(p)
@@ -345,6 +350,9 @@ class Chat:
         self.owner_name = ""
         self.name = ""
         self.chat_list.clear()
+
+    def is_in_your_chat(self, p: Packet):
+        return int(p.src_id) in self.chat_list.keys()
 
 
 def network_init(id, port) -> packet.Packet:
