@@ -3,7 +3,7 @@ import logging
 import socket
 import threading
 from threading import Lock
-from enum import Enum
+from enum import Enum, IntEnum
 from typing import Any
 import client
 import constants as consts
@@ -253,7 +253,7 @@ class Node:
                 ids = ast.literal_eval(f"[{elems[0][1]}]")
                 self.chat.start_chat(elems[0][0], ids)
                 return
-            elif consts.SET_NAME_REGEX.match(p.data) and self.chat.active != ChatState.INACTIVE:
+            elif consts.SET_NAME_REGEX.match(p.data) and self.chat.state != ChatState.INACTIVE:
                 elems = consts.SET_NAME_REGEX.findall(p.data)
                 self.chat.chat_list[int(elems[0][1])] = elems[0][0]
                 print(consts.JOINED_CHAT.format(chat_name=elems[0][0], id=elems[0][1]))
@@ -263,7 +263,7 @@ class Node:
         self.send_packet(p)
 
 
-class ChatState(Enum):  # todo check all states again
+class ChatState(IntEnum):  # todo check all states again
     INACTIVE = 0
     PENDING = 1
     ACTIVE = 2
@@ -271,7 +271,7 @@ class ChatState(Enum):  # todo check all states again
 
 class Chat:
     def __init__(self, node: Node):
-        self.active: ChatState = ChatState.INACTIVE
+        self.state: ChatState = ChatState.INACTIVE
         self.owner_name = ""
         self.name = ""
         self.node = node
@@ -282,7 +282,7 @@ class Chat:
         self.owner_name = owner_name
         self.name = owner_name
         with self.lock:
-            self.active = ChatState.ACTIVE
+            self.state = ChatState.ACTIVE
             self.chat_list[self.node.id] = owner_name
         for id in ids[1:]:
             _id = int(id)
@@ -295,7 +295,7 @@ class Chat:
     def start_chat(self, owner_name: str, ids: list):
         self.owner_name = owner_name
         with self.lock:
-            self.active = ChatState.PENDING
+            self.state = ChatState.PENDING
             self.chat_list[ids[0]] = owner_name
 
         for id in ids[1:]:
@@ -306,17 +306,17 @@ class Chat:
 
         while True:
             print(consts.ASK_JOIN_CHAT.format(chat_name=owner_name, id=ids[0]))
-            is_join = input().strip().upper()
-            print(is_join)
+            client.cmd_sema.acquire()
+            is_join = client.chat_input
             if consts.YES_REGEX.match(is_join):
                 print(consts.CHOOSE_NAME_MSG)
-                name = input().strip()  # todo input blocked from client.py
-                print(name)
+                client.cmd_sema.acquire()
+                name = client.chat_input
                 self.name = name
                 self.chat_list[self.node.id] = name
                 self.send_to_chat_list(consts.SET_NAME.format(id=self.node.id, chat_name=name))
                 with self.lock:
-                    self.active = ChatState.ACTIVE
+                    self.state = ChatState.ACTIVE
                 return
             elif consts.NO_REGEX.match(is_join):
                 with self.lock:
@@ -330,7 +330,7 @@ class Chat:
             self.node.send_packet(p)
 
     def clear_chat(self):
-        self.active = ChatState.INACTIVE
+        self.state = ChatState.INACTIVE
         self.owner_name = ""
         self.name = ""
         self.chat_list.clear()

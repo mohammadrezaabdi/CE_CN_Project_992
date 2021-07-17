@@ -2,12 +2,15 @@ import ast
 import logging
 import re
 import socket
+import threading
 import time
 import constants as consts
-from node import Node
+from node import Node, ChatState
 from packet import *
 
 logger = logging.getLogger("client")
+cmd_sema = threading.Semaphore(0)
+chat_input = ""
 
 
 def send(ip: str, port: int, packet: Packet):
@@ -24,8 +27,13 @@ def send(ip: str, port: int, packet: Packet):
 
 
 def handle_user_commands(node: Node):
+    global chat_input
     while True:
         cmd = input().strip().upper()
+        if node.chat.state == ChatState.PENDING:
+            cmd_sema.release()
+            chat_input = cmd
+            continue
         if consts.ROUTE_REGEX.match(cmd):
             node.send_packet_util(PacketType.ROUTING_REQUEST, int(re.findall(consts.ROUTE_REGEX, cmd)[0]))
         elif consts.ADVERTISE_REGEX.match(cmd):
@@ -38,10 +46,6 @@ def handle_user_commands(node: Node):
             elems = consts.START_CHAT_REGEX.findall(cmd)
             ids = ast.literal_eval(f"[{elems[0][1]}]")
             node.chat.init_chat(elems[0][0], ids)
-        elif consts.ASK_JOIN_CHAT_REGEX.match(cmd):
-            pass
-        elif consts.YES_REGEX.match(cmd):
-            pass
         elif consts.SET_NAME_REGEX.match(cmd):
             pass
         elif consts.EXIT_CHAT_REGEX.match(cmd):
