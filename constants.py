@@ -85,8 +85,8 @@ SET_NAME_REGEX = re.compile(r"^CHAT:\n(-?\d+) :(\w+)$")
 
 JOINED_CHAT = "{chat_name}({id}) was joind to the chat."
 
-SHOW_MSG = "CHAT:\n{chat_name}: {message}"
-SHOW_MSG_REGEX = re.compile(r"^CHAT:\n(\w+): (.*)$")
+SHOW_MSG = "{chat_name}: {message}"
+SHOW_MSG_REGEX = re.compile(r"^CHAT:\n(.*)$")
 
 EXIT_CHAT_MSG = "EXIT CHAT"
 
@@ -116,7 +116,7 @@ CHAT_IS_DISABLE = "Chat is disabled. Make sure the firewall allows you to chat."
 LOG_TEMPLATE = "{type} Packet from {id_src} to {id_dest}"
 
 MANAGER_IP = "127.0.0.1"
-MANAGER_PORT = 8558
+MANAGER_PORT = 8559
 DEFAULT_IP = MANAGER_IP
 
 BUFFER_SIZE = 1024

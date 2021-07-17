@@ -258,6 +258,11 @@ class Node:
                 self.chat.chat_list[int(elems[0][0])] = elems[0][1]
                 print(consts.JOINED_CHAT.format(chat_name=elems[0][1], id=elems[0][0]))
                 return
+            elif consts.SHOW_MSG_REGEX.match(p.data) and self.chat.state == ChatState.ACTIVE:
+                raw = consts.SHOW_MSG_REGEX.findall(p.data)[0]
+                src_name = self.chat.chat_list[int(p.src_id)]
+                print(consts.SHOW_MSG.format(chat_name=src_name, message=raw))
+                return
             else:
                 return
         self.send_packet(p)
@@ -323,7 +328,7 @@ class Chat:
                     self.clear_chat()
                 return
 
-    def send_to_chat_list(self, data: str):
+    def send_to_chat_list(self, data: str):  # todo not joined in chat list
         for id, name in self.chat_list.items():
             if int(id) == self.node.id:
                 continue
