@@ -30,13 +30,12 @@ class IdRoute:
 
 class IdTable:
     def __init__(self):
-        # todo known chat
         self.default_gateway: tuple[int, int] = tuple()
-        self.routing_table: list[IdRoute] = []  # todo dict
+        self.routing_table: list[IdRoute] = []
         self.known_hosts: set[int] = set()
         self.fw_table: list[tuple[Any, Any, FWState]] = []
 
-    def get_next_hop(self, dest_id: int):
+    def get_next_hop(self, dest_id: int):  # todo Mahdi ghaznavi??
         if dest_id not in self.known_hosts:
             return consts.NEXT_HOP_NOT_FOUND
         results = [route for route in self.routing_table if route.dest == dest_id and route.state == FWState.ACCEPT]
