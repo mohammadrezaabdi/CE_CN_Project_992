@@ -1,74 +1,62 @@
+import log
 import ast
-import logging
-import re
-import socket
 import threading
-import time
-
 import constants as consts
-from node import Node, ChatState, FWAction
 from packet import *
+from node import Node
 
-logger = logging.getLogger("client")
-cmd_sema = threading.Semaphore(0)
-chat_input = ""
+log.init()
 
 
-def send(ip: str, port: int, packet: Packet):
+def network_init(id, port) -> Packet:
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
-        while True:
-            try:
-                s.connect((ip, port))
-                logger.info("connected to server successfully!")
-                s.sendall(str(packet.__dict__).encode("ascii"))
-                break
-            except:
-                time.sleep(1)
-                logger.exception("waiting for server...")
+        s.connect((consts.DEFAULT_IP, consts.MANAGER_PORT))
+
+        request = consts.CONNECT_REQUEST.format(id=id, port=port)
+        p = Packet(
+            p_type=PacketType.CONNECTION_REQUEST.value,
+            src_id=id,
+            dest_id=-1,
+            data=request,
+        )
+        packet_dict = str(p.__dict__)
+        s.sendall(packet_dict.encode("ascii"))
+
+        response = s.recv(consts.BUFFER_SIZE).decode("ascii")
+        response = ast.literal_eval(response)
+        return Packet(**response)
 
 
-def handle_user_commands(node: Node):
-    global chat_input
-    while True:
-        cmd = input().strip().upper()  # todo not upper case
-        if node.chat.state == ChatState.PENDING:
-            cmd_sema.release()
-            chat_input = cmd
-            continue
-        if consts.ROUTE_REGEX.match(cmd):
-            node.send_packet_util(PacketType.ROUTING_REQUEST, int(re.findall(consts.ROUTE_REGEX, cmd)[0]))
-        elif consts.ADVERTISE_REGEX.match(cmd):
-            node.send_packet_util(PacketType.ADVERTISE, int(consts.ADVERTISE_REGEX.findall(cmd)[0]))
-        elif consts.ADVERTISE_ALL_REGEX.match(cmd):
-            node.send_packet_util(PacketType.ADVERTISE, consts.SEND_ALL)
-        elif consts.SALAM_REGEX.match(cmd):
-            node.send_packet_util(PacketType.MESSAGE, int(consts.SALAM_REGEX.findall(cmd)[0]), consts.SALAM)
-        elif consts.START_CHAT_REGEX.match(cmd):
-            if node.chat.state == ChatState.DISABLE:
-                print(consts.CHAT_IS_DISABLE)
-                break
-            elems = consts.START_CHAT_REGEX.findall(cmd)
-            ids = ast.literal_eval(f"[{elems[0][1]}]")
-            node.chat.init_chat(elems[0][0], ids)
-        elif consts.EXIT_CHAT_MSG_REGEX.match(cmd):
-            node.chat.send_to_chat_list(consts.EXIT_CHAT.format(id=node.id))
-            node.chat.clear_chat()
-        elif consts.FILTER_REGEX.match(cmd):
-            [(dir, src, dst, action)] = consts.FILTER_REGEX.findall(cmd)
-            if src == "*":
-                src = consts.SEND_ALL
-            if dst == "*":
-                dst = consts.SEND_ALL
-            node.set_fw_rule(dir, src, dst, action)
-        elif consts.FW_CHAT_REGEX.match(cmd):
-            [(action)] = consts.FW_CHAT_REGEX.findall(cmd)
-            if FWAction[action] == FWAction.DROP:
-                node.chat.state = ChatState.DISABLE
-            elif FWAction[action] == FWAction.ACCEPT:
-                node.chat.state = ChatState.INACTIVE
+def family_meeting(my_id: int, my_port: int, pid: int, pport: int):
+    if pid == consts.ROOT_PARENT_ID:
+        return
+    p = Packet(PacketType.CONNECTION_REQUEST.value, my_id, pid, str(my_port))
+    p.send(consts.DEFAULT_IP, pport)
 
-            node.set_fw_rule('FORWARD', consts.SEND_ALL, consts.SEND_ALL, action, p_type=PacketType.MESSAGE)
-        elif consts.SHOW_KNOWN_CLIENTS_REGEX.match(cmd):
-            print(node.id_table.known_hosts)
-        elif node.chat.state == ChatState.ACTIVE:
-            node.chat.send_to_chat_list(consts.CHAT + cmd, is_broadcast=False)
+
+def main():
+    cmd = input()
+    try:
+        [(id, port)] = consts.CONNECT_REGEX.findall(cmd)
+    except Exception as e:
+        [(id)] = consts.CONNECT_PORT_LESS_REGEX.findall(cmd)
+        port = 10000 + int(id) * 10
+
+    p = network_init(id, port)
+    [(pid, pport)] = consts.CONNECT_ACCEPT_REGEX.findall(p.data)
+    node = Node(int(id), int(port))
+    if int(pid) == -1 and int(pport) == -1:
+        node.parent = (consts.ROOT_PARENT_ID, consts.ROOT_PARENT_PORT)
+    else:
+        node.set_parent(pid, pport)
+
+    family_meeting(node.id, node.port, int(node.parent[0]), int(node.parent[1]))
+
+    t = threading.Thread(target=node.command_handler)
+    t.start()
+
+    node.server_socket.listen()
+
+
+if __name__ == "__main__":
+    main()
