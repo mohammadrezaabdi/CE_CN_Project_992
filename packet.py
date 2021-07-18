@@ -1,4 +1,9 @@
 from enum import IntEnum
+import logging
+import socket
+import time
+
+logger = logging.getLogger("packet")
 
 
 class PacketType(IntEnum):
@@ -19,3 +24,15 @@ class Packet:
         self.src_id = src_id
         self.dest_id = dest_id
         self.data = data
+
+    def send(self, ip: str, port: int):
+        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+            while True:
+                try:
+                    s.connect((ip, port))
+                    logger.info("connected to server successfully!")
+                    s.sendall(str(self.__dict__).encode("ascii"))
+                    break
+                except:
+                    time.sleep(1)
+                    logger.exception("waiting for server...")

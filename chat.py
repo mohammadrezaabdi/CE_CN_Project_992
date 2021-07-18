@@ -1,7 +1,7 @@
 from enum import IntEnum
-import client
 import constants as consts
 from packet import Packet, PacketType
+import globals
 
 
 class ChatState(IntEnum):
@@ -41,12 +41,12 @@ class Chat:
 
         while True:
             print(consts.ASK_JOIN_CHAT.format(chat_name=owner_name, id=id_port_list[0][0]))
-            client.cmd_sema.acquire()
-            is_join = client.chat_input
+            globals.cmd_sema.acquire()
+            is_join = globals.chat_input
             if consts.YES_REGEX.match(is_join):
                 print(consts.CHOOSE_NAME_MSG)
-                client.cmd_sema.acquire()
-                name = client.chat_input
+                globals.cmd_sema.acquire()
+                name = globals.chat_input
                 self.self = (your_id, name)
                 self.chat_list[your_id] = name
                 self.state = ChatState.ACTIVE
@@ -63,7 +63,7 @@ class Chat:
             if int(id) == self.self[0] or (not is_broadcast and name == ""):
                 continue
             p = Packet(PacketType.MESSAGE.value, self.self[0], id, data)
-            client.send(consts.DEFAULT_IP, self.port_list[id], p)
+            p.send(consts.DEFAULT_IP, self.port_list[id])
 
     def clear_chat(self):
         self.state = ChatState.INACTIVE

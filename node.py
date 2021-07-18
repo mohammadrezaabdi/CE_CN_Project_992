@@ -1,19 +1,15 @@
 import ast
 import logging
+import globals
 import socket
 import re
-import threading
 from firewall import FWAction, FWRule
 from chat import Chat, ChatState
 from table import IdTable
-import client
 import constants as consts
-import log
-import packet
 from packet import Packet, PacketType
 from server import Server
 
-log.init()
 logger = logging.getLogger("node")
 
 
@@ -143,7 +139,7 @@ class Node:
                 p = Packet(PacketType.DESTINATION_NOT_FOUND.value, self.id, p.src_id,
                            consts.DEST_NOT_FOUND.format(id_dest=p.dest_id))
                 port = int(self.id_table.get_next_hop(p.dest_id)[1])
-        client.send(consts.DEFAULT_IP, port, p)
+        p.send(consts.DEFAULT_IP, port)
 
     def send_packet_util(self, p_type: PacketType, dest_id: int, data: str = ""):
         sent_packet = Packet(p_type.value, self.id, int(dest_id), data)
@@ -212,10 +208,12 @@ class Node:
         while True:
             cmd = input().strip().upper()  # todo not upper case
             if self.chat.state == ChatState.PENDING:
-                client.cmd_sema.release()
-                client.chat_input = cmd
+                globals.chat_input = cmd
+                globals.cmd_sema.release()
                 continue
-            if consts.ROUTE_REGEX.match(cmd):
+            if self.chat.state == ChatState.ACTIVE:
+                self.chat.send_to_chat_list(consts.CHAT + cmd, is_broadcast=False)
+            elif consts.ROUTE_REGEX.match(cmd):
                 self.send_packet_util(PacketType.ROUTING_REQUEST, int(re.findall(consts.ROUTE_REGEX, cmd)[0]))
             elif consts.ADVERTISE_REGEX.match(cmd):
                 self.send_packet_util(PacketType.ADVERTISE, int(consts.ADVERTISE_REGEX.findall(cmd)[0]))
@@ -250,59 +248,3 @@ class Node:
                 self.set_fw_rule('FORWARD', consts.SEND_ALL, consts.SEND_ALL, action, p_type=PacketType.MESSAGE)
             elif consts.SHOW_KNOWN_CLIENTS_REGEX.match(cmd):
                 print(self.id_table.known_hosts)
-            elif self.chat.state == ChatState.ACTIVE:
-                self.chat.send_to_chat_list(consts.CHAT + cmd, is_broadcast=False)
-
-
-def network_init(id, port) -> packet.Packet:
-    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
-        s.connect((consts.DEFAULT_IP, consts.MANAGER_PORT))
-
-        request = consts.CONNECT_REQUEST.format(id=id, port=port)
-        p = Packet(
-            p_type=PacketType.CONNECTION_REQUEST.value,
-            src_id=id,
-            dest_id=-1,
-            data=request,
-        )
-        packet_dict = str(p.__dict__)
-        s.sendall(packet_dict.encode("ascii"))
-
-        response = s.recv(consts.BUFFER_SIZE).decode("ascii")
-        response = ast.literal_eval(response)
-        return Packet(**response)
-
-
-def family_meeting(my_id: int, my_port: int, pid: int, pport: int):
-    if pid == consts.ROOT_PARENT_ID:
-        return
-    p = Packet(PacketType.CONNECTION_REQUEST.value, my_id, pid, str(my_port))
-    client.send(consts.DEFAULT_IP, pport, p)
-
-
-def main():
-    cmd = input()
-    try:
-        [(id, port)] = consts.CONNECT_REGEX.findall(cmd)
-    except Exception as e:
-        [(id)] = consts.CONNECT_PORT_LESS_REGEX.findall(cmd)
-        port = 10000 + int(id) * 10
-
-    p = network_init(id, port)
-    [(pid, pport)] = consts.CONNECT_ACCEPT_REGEX.findall(p.data)
-    node = Node(int(id), int(port))
-    if int(pid) == -1 and int(pport) == -1:
-        node.parent = (consts.ROOT_PARENT_ID, consts.ROOT_PARENT_PORT)
-    else:
-        node.set_parent(pid, pport)
-
-    family_meeting(node.id, node.port, int(node.parent[0]), int(node.parent[1]))
-
-    t = threading.Thread(target=node.handle_user_commands)
-    t.start()
-
-    node.server_socket.listen()
-
-
-if __name__ == "__main__":
-    main()
