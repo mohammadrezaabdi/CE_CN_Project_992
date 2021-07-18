@@ -19,7 +19,7 @@ class PacketType(IntEnum):
 
 
 class Packet:
-    def __init__(self, p_type: int, src_id: int, dest_id: int, data: str):
+    def __init__(self, p_type: int, src_id: int, dest_id: int, data: str = ""):
         self.p_type = p_type
         self.src_id = src_id
         self.dest_id = dest_id

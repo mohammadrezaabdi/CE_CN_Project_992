@@ -52,7 +52,7 @@ def main():
 
     family_meeting(node.id, node.port, int(node.parent[0]), int(node.parent[1]))
 
-    t = threading.Thread(target=node.handle_user_commands)
+    t = threading.Thread(target=node.command_handler)
     t.start()
 
     node.server_socket.listen()

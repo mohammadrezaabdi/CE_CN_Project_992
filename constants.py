@@ -50,10 +50,12 @@ ADVERTISE = "Advertise {id}"
 ADVERTISE_REGEX = re.compile(r"^ADVERTISE (-?\d+)$")
 
 SALAM = "Salam Salam Sad Ta Salam"
+SALAM_PRINT = "Salam Salam Sad Ta Salam from {id}"
 SALAM_REGEX = re.compile(r"^Salam Salam Sad Ta Salam (-?\d+)$", re.IGNORECASE)
 SALAM_RAW_REGEX = re.compile(r"^Salam Salam Sad Ta Salam$")
 
 SALAM_RESPONSE = "Hezaro Sisad Ta Salam"
+SALAM_RESPONSE_PRINT = "Hezaro Sisad Ta Salam from {id}"
 SALAM_RESPONSE_REGEX = re.compile(r"^Hezaro Sisad Ta Salam$", re.IGNORECASE)
 
 CHAT = "CHAT:\n"

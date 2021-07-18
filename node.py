@@ -21,11 +21,17 @@ class Node:
         self.left_child = None
         self.right_child = None
         self.parent = None
-        self.server_socket = Server(consts.DEFAULT_IP, port, self.handler, logger)
+        self.server_socket = Server(consts.DEFAULT_IP, port, self.packet_receive_handler, logger)
         self.id_table.add_entry(ID, (ID, port))
         self.chat: Chat = Chat()
 
-    def handler(self, conn: socket.socket):
+    def set_parent(self, pid: int, pport: int):
+        id, port = int(pid), int(pport)
+        self.parent = (id, port)
+        self.id_table.add_entry(id, self.parent)
+        self.id_table.default_gateway = (id, port)
+
+    def packet_receive_handler(self, conn: socket.socket):
         logger.debug("handling new client")
         with conn:
             try:
@@ -78,13 +84,18 @@ class Node:
             self.id_table.known_hosts.add(p.src_id)
         else:
             sent_packet = p
-        self.send(sent_packet)
+        self.send_packet_directly(sent_packet)
+
+    def advertise_handle(self, p: Packet):
+        if p.dest_id == self.id or p.src_id == self.id:
+            return
+        self.send_packet(p)
 
     def advertise_parent(self, src_id: int):
         if self.parent[0] == consts.ROOT_PARENT_ID:
             return
         advertise_parent_packet = Packet(PacketType.PARENT_ADVERTISE.value, self.id, self.parent[0], f"{src_id}")
-        self.send(advertise_parent_packet, port=int(self.parent[1]))
+        self.send_packet_directly(advertise_parent_packet, port=int(self.parent[1]))
 
     def advertise_parent_handle(self, p: Packet):
         if p.src_id == self.left_child[0]:
@@ -95,7 +106,7 @@ class Node:
         if self.parent[0] == consts.ROOT_PARENT_ID:
             return
         advertise_parent_packet = Packet(PacketType.PARENT_ADVERTISE.value, self.id, self.parent[0], f"{p.data}")
-        self.send(advertise_parent_packet, port=int(self.parent[1]))
+        self.send_packet_directly(advertise_parent_packet, port=int(self.parent[1]))
 
     def routing_response_handle(self, p: Packet, is_not_found=False):
         data = p.data
@@ -109,66 +120,17 @@ class Node:
             print(data)
             return
         p.data = data
-        self.send(p)
-
-    def set_fw_rule(self, dir, src, dst, action, p_type=PacketType.ALL):
-        src = int(src)
-        dst = int(dst)
-        if dir == "INPUT":
-            dst = self.id
-        elif dir == "OUTPUT":
-            src = self.id
-        self.id_table.fw_rules.append(FWRule(src=src, dst=dst, p_type=p_type, action=FWAction[action]))
-
-    def set_parent(self, pid: int, pport: int):
-        id, port = int(pid), int(pport)
-        self.parent = (id, port)
-        self.id_table.add_entry(id, self.parent)
-        self.id_table.default_gateway = (id, port)
-
-    def send(self, p: Packet, port=None):
-        # firewall check
-        if not self.id_table.fw_allows(p):
-            return
-        if not port:
-            try:
-                port = int(self.id_table.get_next_hop(p.dest_id)[1])
-            except Exception as e:
-                print(consts.UNKNOWN_DEST.format(id_dest=p.dest_id))
-
-                p = Packet(PacketType.DESTINATION_NOT_FOUND.value, self.id, p.src_id,
-                           consts.DEST_NOT_FOUND.format(id_dest=p.dest_id))
-                port = int(self.id_table.get_next_hop(p.dest_id)[1])
-        p.send(consts.DEFAULT_IP, port)
-
-    def send_packet_util(self, p_type: PacketType, dest_id: int, data: str = ""):
-        sent_packet = Packet(p_type.value, self.id, int(dest_id), data)
-        self.send_packet(sent_packet)
-
-    def send_packet(self, p: Packet):
-        if int(p.dest_id) == consts.SEND_ALL:
-            hops = set([route.next_hop for route in self.id_table.routing_table])
-            hops.discard(self.id_table.get_next_hop(p.src_id))
-            hops.discard((self.id, self.port))
-            for hop in hops:
-                self.send(p, port=int(hop[1]))
-            return
-        self.send(p)
-
-    def advertise_handle(self, p: Packet):
-        if p.dest_id == self.id or p.src_id == self.id:
-            return
-        self.send_packet(p)
+        self.send_packet_directly(p)
 
     def message_handle(self, p: Packet):
         if p.dest_id == consts.SEND_ALL:
             self.send_packet(p)
         if p.dest_id == self.id or p.dest_id == consts.SEND_ALL:
             if consts.SALAM_RAW_REGEX.match(p.data):
-                print(consts.SALAM, f"from {p.src_id}")
+                print(consts.SALAM_PRINT.format(id=p.src_id))
                 p = Packet(PacketType.MESSAGE.value, self.id, p.src_id, consts.SALAM_RESPONSE)
             elif consts.SALAM_RESPONSE_REGEX.match(p.data):
-                print(consts.SALAM_RESPONSE, f"from {p.src_id}")
+                print(consts.SALAM_RESPONSE_PRINT.format(id=p.src_id))
                 return
             elif consts.REQ_FOR_CHAT_REGEX.match(p.data):
                 if self.chat.state != ChatState.INACTIVE:
@@ -204,7 +166,40 @@ class Node:
                 return
         self.send_packet(p)
 
-    def handle_user_commands(self):
+    def set_fw_rule(self, dir: str, src: int, dst: int, action: FWAction, p_type: PacketType = PacketType.ALL):
+        src = int(src)
+        dst = int(dst)
+        if dir == "INPUT":
+            dst = self.id
+        elif dir == "OUTPUT":
+            src = self.id
+        self.id_table.fw_rules.append(FWRule(src=src, dst=dst, p_type=p_type, action=FWAction[action]))
+
+    def send_packet(self, p: Packet):
+        if int(p.dest_id) == consts.SEND_ALL:
+            hops = set([route.next_hop for route in self.id_table.routing_table])
+            hops.discard(self.id_table.get_next_hop(p.src_id))
+            hops.discard((self.id, self.port))
+            for hop in hops:
+                self.send_packet_directly(p, port=int(hop[1]))
+            return
+        self.send_packet_directly(p)
+
+    def send_packet_directly(self, p: Packet, port=None):
+        # firewall check
+        if not self.id_table.fw_allows(p):
+            return
+        if not port:
+            try:
+                port = int(self.id_table.get_next_hop(p.dest_id)[1])
+            except Exception as e:
+                print(consts.UNKNOWN_DEST.format(id_dest=p.dest_id))
+                p = Packet(PacketType.DESTINATION_NOT_FOUND.value, self.id, p.src_id,
+                           consts.DEST_NOT_FOUND.format(id_dest=p.dest_id))
+                port = int(self.id_table.get_next_hop(p.dest_id)[1])
+        p.send(consts.DEFAULT_IP, port)
+
+    def command_handler(self):
         while True:
             cmd = input().strip().upper()  # todo not upper case
             if self.chat.state == ChatState.PENDING:
@@ -214,13 +209,16 @@ class Node:
             if self.chat.state == ChatState.ACTIVE:
                 self.chat.send_to_chat_list(consts.CHAT + cmd, is_broadcast=False)
             elif consts.ROUTE_REGEX.match(cmd):
-                self.send_packet_util(PacketType.ROUTING_REQUEST, int(re.findall(consts.ROUTE_REGEX, cmd)[0]))
+                self.send_packet(
+                    Packet(PacketType.ROUTING_REQUEST.value, self.id, int(re.findall(consts.ROUTE_REGEX, cmd)[0])))
             elif consts.ADVERTISE_REGEX.match(cmd):
-                self.send_packet_util(PacketType.ADVERTISE, int(consts.ADVERTISE_REGEX.findall(cmd)[0]))
+                self.send_packet(
+                    Packet(PacketType.ADVERTISE.value, self.id, int(consts.ADVERTISE_REGEX.findall(cmd)[0])))
             elif consts.ADVERTISE_ALL_REGEX.match(cmd):
-                self.send_packet_util(PacketType.ADVERTISE, consts.SEND_ALL)
+                self.send_packet(Packet(PacketType.ADVERTISE.value, self.id, consts.SEND_ALL))
             elif consts.SALAM_REGEX.match(cmd):
-                self.send_packet_util(PacketType.MESSAGE, int(consts.SALAM_REGEX.findall(cmd)[0]), consts.SALAM)
+                self.send_packet(
+                    Packet(PacketType.MESSAGE.value, self.id, int(consts.SALAM_REGEX.findall(cmd)[0]), consts.SALAM))
             elif consts.START_CHAT_REGEX.match(cmd):
                 if self.chat.state == ChatState.DISABLE:
                     print(consts.CHAT_IS_DISABLE)
