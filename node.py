@@ -1,14 +1,15 @@
 import ast
 import logging
-import globals
-import socket
 import re
-from firewall import FWAction, FWRule
-from chat import Chat, ChatState
-from table import IdTable
+import socket
+
 import constants as consts
+import globals
+from chat import Chat, ChatState
+from firewall import FWAction, FWRule
 from packet import Packet, PacketType
 from server import Server
+from table import IdTable
 
 logger = logging.getLogger("node")
 
@@ -84,7 +85,7 @@ class Node:
             self.id_table.known_hosts.add(p.src_id)
         else:
             sent_packet = p
-        self.send_packet_directly(sent_packet)
+        self.__send(sent_packet)
 
     def advertise_handle(self, p: Packet):
         if p.dest_id == self.id or p.src_id == self.id:
@@ -95,7 +96,7 @@ class Node:
         if self.parent[0] == consts.ROOT_PARENT_ID:
             return
         advertise_parent_packet = Packet(PacketType.PARENT_ADVERTISE.value, self.id, self.parent[0], f"{src_id}")
-        self.send_packet_directly(advertise_parent_packet, port=int(self.parent[1]))
+        self.__send(advertise_parent_packet, port=int(self.parent[1]))
 
     def advertise_parent_handle(self, p: Packet):
         if p.src_id == self.left_child[0]:
@@ -106,7 +107,7 @@ class Node:
         if self.parent[0] == consts.ROOT_PARENT_ID:
             return
         advertise_parent_packet = Packet(PacketType.PARENT_ADVERTISE.value, self.id, self.parent[0], f"{p.data}")
-        self.send_packet_directly(advertise_parent_packet, port=int(self.parent[1]))
+        self.__send(advertise_parent_packet, port=int(self.parent[1]))
 
     def routing_response_handle(self, p: Packet, is_not_found=False):
         data = p.data
@@ -120,7 +121,7 @@ class Node:
             print(data)
             return
         p.data = data
-        self.send_packet_directly(p)
+        self.__send(p)
 
     def message_handle(self, p: Packet):
         if p.dest_id == consts.SEND_ALL:
@@ -181,11 +182,11 @@ class Node:
             hops.discard(self.id_table.get_next_hop(p.src_id))
             hops.discard((self.id, self.port))
             for hop in hops:
-                self.send_packet_directly(p, port=int(hop[1]))
+                self.__send(p, port=int(hop[1]))
             return
-        self.send_packet_directly(p)
+        self.__send(p)
 
-    def send_packet_directly(self, p: Packet, port=None):
+    def __send(self, p: Packet, port=None):
         # firewall check
         if not self.id_table.fw_allows(p):
             return
@@ -193,10 +194,14 @@ class Node:
             try:
                 port = int(self.id_table.get_next_hop(p.dest_id)[1])
             except Exception as e:
-                print(consts.UNKNOWN_DEST.format(id_dest=p.dest_id))
-                p = Packet(PacketType.DESTINATION_NOT_FOUND.value, self.id, p.src_id,
-                           consts.DEST_NOT_FOUND.format(id_dest=p.dest_id))
-                port = int(self.id_table.get_next_hop(p.dest_id)[1])
+                if self.id != p.src_id:
+                    port = self.id_table.default_gateway[1]
+                else:
+                    print(consts.UNKNOWN_DEST.format(id_dest=p.dest_id))
+                    p = Packet(PacketType.DESTINATION_NOT_FOUND.value, self.id, p.src_id,
+                               consts.DEST_NOT_FOUND.format(id_dest=p.dest_id))
+                    port = int(self.id_table.get_next_hop(p.dest_id)[1])
+
         p.send(consts.DEFAULT_IP, port)
 
     def command_handler(self):
