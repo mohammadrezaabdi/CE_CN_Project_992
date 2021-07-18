@@ -13,8 +13,6 @@ logger = logging.getLogger("client")
 cmd_sema = threading.Semaphore(0)
 chat_input = ""
 
-chat_enable = True
-
 
 def send(ip: str, port: int, packet: Packet):
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
@@ -46,7 +44,7 @@ def handle_user_commands(node: Node):
         elif consts.SALAM_REGEX.match(cmd):
             node.send_packet_util(PacketType.MESSAGE, int(consts.SALAM_REGEX.findall(cmd)[0]), consts.SALAM)
         elif consts.START_CHAT_REGEX.match(cmd):
-            if not allow_chat:
+            if node.chat.state == ChatState.DISABLE:
                 print(consts.CHAT_IS_DISABLE)
                 break
             elems = consts.START_CHAT_REGEX.findall(cmd)
@@ -65,9 +63,9 @@ def handle_user_commands(node: Node):
         elif consts.FW_CHAT_REGEX.match(cmd):
             [(action)] = consts.FW_CHAT_REGEX.findall(cmd)
             if FWAction[action] == FWAction.DROP:
-                allow_chat = False
+                node.chat.state = ChatState.DISABLE
             elif FWAction[action] == FWAction.ACCEPT:
-                allow_chat = True
+                node.chat.state = ChatState.INACTIVE
 
             node.set_fw_rule('FORWARD', consts.SEND_ALL, consts.SEND_ALL, action, p_type=PacketType.MESSAGE)
         elif consts.SHOW_KNOWN_CLIENTS_REGEX.match(cmd):

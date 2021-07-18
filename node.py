@@ -32,7 +32,8 @@ class IdRoute:
 
 @dataclass
 class FWRule:
-    def __init__(self, src=consts.SEND_ALL, dst=consts.SEND_ALL, p_type=PacketType.ALL, action: FWAction = FWAction.DROP):
+    def __init__(self, src=consts.SEND_ALL, dst=consts.SEND_ALL, p_type=PacketType.ALL,
+                 action: FWAction = FWAction.DROP):
         self.src = src
         self.dst = dst
         self.p_type = p_type
@@ -243,7 +244,7 @@ class Node:
                 self.chat.start_chat(elems[0][0], ids)
                 return
             elif consts.SET_NAME_REGEX.match(p.data) and self.chat.state != ChatState.INACTIVE:
-                if not self.chat.is_in_your_chat(p):  # check if this packet belongs to your chat
+                if not self.chat.is_in_your_chat(p, when_start=True):  # check if this packet belongs to your chat
                     return
                 elems = consts.SET_NAME_REGEX.findall(p.data)
                 self.chat.chat_list[int(elems[0][0])] = elems[0][1]
@@ -272,6 +273,7 @@ class ChatState(IntEnum):
     INACTIVE = 0
     PENDING = 1
     ACTIVE = 2
+    DISABLE = 3
 
 
 class Chat:
@@ -340,8 +342,8 @@ class Chat:
         self.name = ""
         self.chat_list.clear()
 
-    def is_in_your_chat(self, p: Packet):
-        return int(p.src_id) in self.chat_list.keys()
+    def is_in_your_chat(self, p: Packet, when_start: bool = False):
+        return int(p.src_id) in self.chat_list.keys() and (when_start or self.chat_list[int(p.src_id)] != "")
 
 
 def network_init(id, port) -> packet.Packet:
