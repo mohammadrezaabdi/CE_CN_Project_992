@@ -21,7 +21,7 @@ class IdTable:
         self.fw_rules: list[FWRule] = []
         self.id = id
 
-    def get_next_hop(self, dest_id: int, src_id=consts.SEND_ALL):  # todo Mahdi ghaznavi??
+    def get_next_hop(self, dest_id: int, src_id=consts.SEND_ALL):
         if dest_id not in self.known_hosts:
             if src_id != self.id:
                 return self.default_gateway

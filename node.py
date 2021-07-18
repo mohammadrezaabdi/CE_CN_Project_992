@@ -210,7 +210,7 @@ class Node:
 
     def command_handler(self):
         while True:
-            cmd = input().strip().upper()  # todo not upper case
+            cmd = input().strip()
             if self.chat.state == ChatState.PENDING:
                 globals.chat_input = cmd
                 globals.cmd_sema.release()
