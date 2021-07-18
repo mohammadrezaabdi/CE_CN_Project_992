@@ -4,6 +4,7 @@ import re
 import socket
 import threading
 import time
+
 import constants as consts
 from node import Node, ChatState
 from packet import *
@@ -57,7 +58,8 @@ def handle_user_commands(node: Node):
                 dst = consts.SEND_ALL
             node.set_fw_rule(dir, src, dst, action)
         elif consts.FW_CHAT_REGEX.match(cmd):
-            pass
+            [(action)] = consts.FW_CHAT_REGEX.findall(cmd)
+            node.set_fw_rule('FORWARD', consts.SEND_ALL, consts.SEND_ALL, action, p_type=PacketType.MESSAGE)
         elif consts.SHOW_KNOWN_CLIENTS_REGEX.match(cmd):
             print(node.id_table.known_hosts)
         elif node.chat.state == ChatState.ACTIVE:
