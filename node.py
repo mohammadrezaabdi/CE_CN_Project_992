@@ -283,29 +283,24 @@ class Chat:
         self.name = ""
         self.node = node
         self.chat_list: dict[int, str] = {}
-        self.lock = Lock()
 
     def init_chat(self, owner_name: str, ids: list):
         self.owner_name = owner_name
         self.name = owner_name
-        with self.lock:
-            self.state = ChatState.ACTIVE
-            self.chat_list[self.node.id] = owner_name
+        self.state = ChatState.ACTIVE
+        self.chat_list[self.node.id] = owner_name
         for id in ids[1:]:
-            with self.lock:
-                self.chat_list[int(id)] = ""
+            self.chat_list[int(id)] = ""
         self.send_to_chat_list(consts.REQ_FOR_CHAT.format(name=owner_name, ids=(", ".join(map(str, ids))).strip()))
 
     def start_chat(self, owner_name: str, ids: list):
         self.owner_name = owner_name
-        with self.lock:
-            self.state = ChatState.PENDING
-            self.chat_list[ids[0]] = owner_name
+        self.state = ChatState.PENDING
+        self.chat_list[ids[0]] = owner_name
 
         for id in ids[1:]:
             _id = int(id)
-            with self.lock:
-                self.chat_list[_id] = ""
+            self.chat_list[_id] = ""
             self.node.id_table.known_hosts.add(_id)
 
         while True:
@@ -317,14 +312,12 @@ class Chat:
                 client.cmd_sema.acquire()
                 name = client.chat_input
                 self.name = name
-                with self.lock:
-                    self.chat_list[self.node.id] = name
-                    self.state = ChatState.ACTIVE
+                self.chat_list[self.node.id] = name
+                self.state = ChatState.ACTIVE
                 self.send_to_chat_list(consts.SET_NAME.format(id=self.node.id, chat_name=name))
                 return
             elif consts.NO_REGEX.match(is_join):
-                with self.lock:
-                    self.clear_chat()
+                self.clear_chat()
                 return
 
     def send_to_chat_list(self, data: str, is_broadcast: bool = True):
