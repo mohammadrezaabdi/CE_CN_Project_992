@@ -1,10 +1,11 @@
 import ast
 import logging
 import socket
+import re
 import threading
 from dataclasses import dataclass
-from enum import Enum, IntEnum
-from threading import Lock
+from enum import Enum
+from chat import Chat, ChatState
 
 import client
 import constants as consts
@@ -270,77 +271,50 @@ class Node:
                 return
         self.send_packet(p)
 
-
-class ChatState(IntEnum):
-    INACTIVE = 0
-    PENDING = 1
-    ACTIVE = 2
-    DISABLE = 3
-
-
-class Chat:
-    def __init__(self):
-        self.state: ChatState = ChatState.INACTIVE
-        self.self: tuple[int, str] = tuple()
-        self.owner: tuple[int, str] = tuple()
-        self.chat_list: dict[int, str] = {}
-        self.port_list: dict[int, int] = {}
-
-    def set_chat(self, state: ChatState, yourself: tuple[int, str], owner: tuple[int, str], chat_list: dict[int, str],
-                 port_list: dict[int, int]):
-        self.state = state
-        self.self = yourself
-        self.owner = owner
-        self.chat_list = chat_list
-        self.port_list = port_list
-        self.chat_list[yourself[0]] = yourself[1]
-        self.chat_list[owner[0]] = owner[1]
-
-    def init_chat(self, owner_name: str, id_port_list: list[tuple[int, int]]):
-        self.set_chat(ChatState.ACTIVE, (id_port_list[0][0], owner_name), (id_port_list[0][0], owner_name),
-                      {id_port[0]: "" for id_port in id_port_list}, dict(id_port_list))
-        self.send_to_chat_list(consts.REQ_FOR_CHAT.format(name=owner_name, ids=(
-            ", ".join(map(str, [elem[0] for elem in id_port_list]))).strip()))
-
-    def start_chat(self, owner_name: str, your_id: int, id_port_list: list[tuple[int, int]]):
-        self.set_chat(ChatState.PENDING, (your_id, ""), (id_port_list[0][0], owner_name),
-                      {id_port[0]: "" for id_port in id_port_list}, dict(id_port_list))
-
+    def handle_user_commands(self):
         while True:
-            print(consts.ASK_JOIN_CHAT.format(chat_name=owner_name, id=id_port_list[0][0]))
-            client.cmd_sema.acquire()
-            is_join = client.chat_input
-            if consts.YES_REGEX.match(is_join):
-                print(consts.CHOOSE_NAME_MSG)
-                client.cmd_sema.acquire()
-                name = client.chat_input
-                self.self = (your_id, name)
-                self.chat_list[your_id] = name
-                self.state = ChatState.ACTIVE
-                self.send_to_chat_list(consts.SET_NAME.format(id=your_id, chat_name=name))
-                return
-            elif consts.NO_REGEX.match(is_join):
-                self.clear_chat()
-                return
-
-    def send_to_chat_list(self, data: str, is_broadcast: bool = True):
-        if self.state == ChatState.INACTIVE:
-            return
-        for id, name in self.chat_list.items():
-            if int(id) == self.self[0] or (not is_broadcast and name == ""):
+            cmd = input().strip().upper()  # todo not upper case
+            if self.chat.state == ChatState.PENDING:
+                client.cmd_sema.release()
+                client.chat_input = cmd
                 continue
-            p = Packet(PacketType.MESSAGE.value, self.self[0], id, data)
-            client.send(consts.DEFAULT_IP, self.port_list[id], p)
-
-    def clear_chat(self):
-        self.state = ChatState.INACTIVE
-        self.owner = tuple()
-        self.self = tuple()
-        self.chat_list.clear()
-        self.port_list.clear()
-
-    def is_in_your_chat(self, p: Packet, when_start: bool = False):
-        return int(p.src_id) in self.chat_list.keys() and (when_start or self.chat_list[int(p.src_id)] != "")
+            if consts.ROUTE_REGEX.match(cmd):
+                self.send_packet_util(PacketType.ROUTING_REQUEST, int(re.findall(consts.ROUTE_REGEX, cmd)[0]))
+            elif consts.ADVERTISE_REGEX.match(cmd):
+                self.send_packet_util(PacketType.ADVERTISE, int(consts.ADVERTISE_REGEX.findall(cmd)[0]))
+            elif consts.ADVERTISE_ALL_REGEX.match(cmd):
+                self.send_packet_util(PacketType.ADVERTISE, consts.SEND_ALL)
+            elif consts.SALAM_REGEX.match(cmd):
+                self.send_packet_util(PacketType.MESSAGE, int(consts.SALAM_REGEX.findall(cmd)[0]), consts.SALAM)
+            elif consts.START_CHAT_REGEX.match(cmd):
+                if self.chat.state == ChatState.DISABLE:
+                    print(consts.CHAT_IS_DISABLE)
+                    break
+                elems = consts.START_CHAT_REGEX.findall(cmd)
+                ids = ast.literal_eval(f"[{elems[0][1]}]")
+                id_ports = [(id, self.id_table.get_next_hop(id)[1]) for id in ids]
+                self.chat.init_chat(elems[0][0], id_ports)
+            elif consts.EXIT_CHAT_MSG_REGEX.match(cmd):
+                self.chat.send_to_chat_list(consts.EXIT_CHAT.format(id=self.id))
+                self.chat.clear_chat()
+            elif consts.FILTER_REGEX.match(cmd):
+                [(dir, src, dst, action)] = consts.FILTER_REGEX.findall(cmd)
+                if src == "*":
+                    src = consts.SEND_ALL
+                if dst == "*":
+                    dst = consts.SEND_ALL
+                self.set_fw_rule(dir, src, dst, action)
+            elif consts.FW_CHAT_REGEX.match(cmd):
+                [(action)] = consts.FW_CHAT_REGEX.findall(cmd)
+                if FWAction[action] == FWAction.DROP:
+                    self.chat.state = ChatState.DISABLE
+                elif FWAction[action] == FWAction.ACCEPT:
+                    self.chat.state = ChatState.INACTIVE
+                self.set_fw_rule('FORWARD', consts.SEND_ALL, consts.SEND_ALL, action, p_type=PacketType.MESSAGE)
+            elif consts.SHOW_KNOWN_CLIENTS_REGEX.match(cmd):
+                print(self.id_table.known_hosts)
+            elif self.chat.state == ChatState.ACTIVE:
+                self.chat.send_to_chat_list(consts.CHAT + cmd, is_broadcast=False)
 
 
 def network_init(id, port) -> packet.Packet:
@@ -348,13 +322,13 @@ def network_init(id, port) -> packet.Packet:
         s.connect((consts.DEFAULT_IP, consts.MANAGER_PORT))
 
         request = consts.CONNECT_REQUEST.format(id=id, port=port)
-        packet = Packet(
+        p = Packet(
             p_type=PacketType.CONNECTION_REQUEST.value,
             src_id=id,
             dest_id=-1,
             data=request,
         )
-        packet_dict = str(packet.__dict__)
+        packet_dict = str(p.__dict__)
         s.sendall(packet_dict.encode("ascii"))
 
         response = s.recv(consts.BUFFER_SIZE).decode("ascii")
@@ -387,7 +361,7 @@ def main():
 
     family_meeting(node.id, node.port, int(node.parent[0]), int(node.parent[1]))
 
-    t = threading.Thread(target=client.handle_user_commands, args=(node,))
+    t = threading.Thread(target=node.handle_user_commands)
     t.start()
 
     node.server_socket.listen()
