@@ -89,7 +89,7 @@ class Node:
         self.parent = None
         self.server_socket = Server(consts.DEFAULT_IP, port, self.handler, logger)
         self.id_table.add_entry(ID, (ID, port))
-        self.chat: Chat = Chat(self)
+        self.chat: Chat = Chat()
 
     def handler(self, conn: socket.socket):
         logger.debug("handling new client")
@@ -241,7 +241,9 @@ class Node:
                     return
                 elems = consts.REQ_FOR_CHAT_REGEX.findall(p.data)
                 ids = ast.literal_eval(f"[{elems[0][1]}]")
-                self.chat.start_chat(elems[0][0], ids)
+                self.id_table.known_hosts.update(ids)
+                id_ports = [(id, self.id_table.get_next_hop(id)[1]) for id in ids]
+                self.chat.start_chat(elems[0][0], self.id, id_ports)
                 return
             elif consts.SET_NAME_REGEX.match(p.data) and self.chat.state != ChatState.INACTIVE:
                 if not self.chat.is_in_your_chat(p, when_start=True):  # check if this packet belongs to your chat
@@ -277,44 +279,45 @@ class ChatState(IntEnum):
 
 
 class Chat:
-    def __init__(self, node: Node):
+    def __init__(self):
         self.state: ChatState = ChatState.INACTIVE
-        self.owner_name = ""
-        self.name = ""
-        self.node = node
+        self.self: tuple[int, str] = tuple()
+        self.owner: tuple[int, str] = tuple()
         self.chat_list: dict[int, str] = {}
+        self.port_list: dict[int, int] = {}
 
-    def init_chat(self, owner_name: str, ids: list):
-        self.owner_name = owner_name
-        self.name = owner_name
-        self.state = ChatState.ACTIVE
-        self.chat_list[self.node.id] = owner_name
-        for id in ids[1:]:
-            self.chat_list[int(id)] = ""
-        self.send_to_chat_list(consts.REQ_FOR_CHAT.format(name=owner_name, ids=(", ".join(map(str, ids))).strip()))
+    def set_chat(self, state: ChatState, yourself: tuple[int, str], owner: tuple[int, str], chat_list: dict[int, str],
+                 port_list: dict[int, int]):
+        self.state = state
+        self.self = yourself
+        self.owner = owner
+        self.chat_list = chat_list
+        self.port_list = port_list
+        self.chat_list[yourself[0]] = yourself[1]
+        self.chat_list[owner[0]] = owner[1]
 
-    def start_chat(self, owner_name: str, ids: list):
-        self.owner_name = owner_name
-        self.state = ChatState.PENDING
-        self.chat_list[ids[0]] = owner_name
+    def init_chat(self, owner_name: str, id_port_list: list[tuple[int, int]]):
+        self.set_chat(ChatState.ACTIVE, (id_port_list[0][0], owner_name), (id_port_list[0][0], owner_name),
+                      {id_port[0]: "" for id_port in id_port_list}, dict(id_port_list))
+        self.send_to_chat_list(consts.REQ_FOR_CHAT.format(name=owner_name, ids=(
+            ", ".join(map(str, [elem[0] for elem in id_port_list]))).strip()))
 
-        for id in ids[1:]:
-            _id = int(id)
-            self.chat_list[_id] = ""
-            self.node.id_table.known_hosts.add(_id)
+    def start_chat(self, owner_name: str, your_id: int, id_port_list: list[tuple[int, int]]):
+        self.set_chat(ChatState.PENDING, (your_id, ""), (id_port_list[0][0], owner_name),
+                      {id_port[0]: "" for id_port in id_port_list}, dict(id_port_list))
 
         while True:
-            print(consts.ASK_JOIN_CHAT.format(chat_name=owner_name, id=ids[0]))
+            print(consts.ASK_JOIN_CHAT.format(chat_name=owner_name, id=id_port_list[0][0]))
             client.cmd_sema.acquire()
             is_join = client.chat_input
             if consts.YES_REGEX.match(is_join):
                 print(consts.CHOOSE_NAME_MSG)
                 client.cmd_sema.acquire()
                 name = client.chat_input
-                self.name = name
-                self.chat_list[self.node.id] = name
+                self.self = (your_id, name)
+                self.chat_list[your_id] = name
                 self.state = ChatState.ACTIVE
-                self.send_to_chat_list(consts.SET_NAME.format(id=self.node.id, chat_name=name))
+                self.send_to_chat_list(consts.SET_NAME.format(id=your_id, chat_name=name))
                 return
             elif consts.NO_REGEX.match(is_join):
                 self.clear_chat()
@@ -324,16 +327,17 @@ class Chat:
         if self.state == ChatState.INACTIVE:
             return
         for id, name in self.chat_list.items():
-            if int(id) == self.node.id or (not is_broadcast and name == ""):
+            if int(id) == self.self[0] or (not is_broadcast and name == ""):
                 continue
-            p = Packet(PacketType.MESSAGE.value, self.node.id, id, data)
-            self.node.send_packet(p)
+            p = Packet(PacketType.MESSAGE.value, self.self[0], id, data)
+            client.send(consts.DEFAULT_IP, self.port_list[id], p)
 
     def clear_chat(self):
         self.state = ChatState.INACTIVE
-        self.owner_name = ""
-        self.name = ""
+        self.owner = tuple()
+        self.self = tuple()
         self.chat_list.clear()
+        self.port_list.clear()
 
     def is_in_your_chat(self, p: Packet, when_start: bool = False):
         return int(p.src_id) in self.chat_list.keys() and (when_start or self.chat_list[int(p.src_id)] != "")

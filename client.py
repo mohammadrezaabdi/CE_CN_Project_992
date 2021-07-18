@@ -49,7 +49,8 @@ def handle_user_commands(node: Node):
                 break
             elems = consts.START_CHAT_REGEX.findall(cmd)
             ids = ast.literal_eval(f"[{elems[0][1]}]")
-            node.chat.init_chat(elems[0][0], ids)
+            id_ports = [(id, node.id_table.get_next_hop(id)[1]) for id in ids]
+            node.chat.init_chat(elems[0][0], id_ports)
         elif consts.EXIT_CHAT_MSG_REGEX.match(cmd):
             node.chat.send_to_chat_list(consts.EXIT_CHAT.format(id=node.id))
             node.chat.clear_chat()
