@@ -2,9 +2,9 @@ import ast
 import logging
 import socket
 import threading
-from threading import Lock
 from enum import Enum, IntEnum
-from typing import Any
+from threading import Lock
+
 import client
 import constants as consts
 import log
@@ -28,12 +28,20 @@ class IdRoute:
         self.state = state
 
 
+class FWRule:
+    def __init__(self, src=consts.SEND_ALL, dst=consts.SEND_ALL, p_type=PacketType.ALL, action: FWState = FWState.DROP):
+        self.src = src
+        self.dst = dst
+        self.p_type = p_type
+        self.action = action
+
+
 class IdTable:
     def __init__(self):
         self.default_gateway: tuple[int, int] = tuple()
         self.routing_table: list[IdRoute] = []
         self.known_hosts: set[int] = set()
-        self.fw_table: list[tuple[Any, Any, FWState]] = []
+        self.fw_rules: list[FWRule] = []
 
     def get_next_hop(self, dest_id: int):  # todo Mahdi ghaznavi??
         if dest_id not in self.known_hosts:
@@ -58,26 +66,12 @@ class IdTable:
     def fw_allows(self, p: Packet) -> bool:
         src = p.src_id
         dst = p.dest_id
-
-        # both dst and src are valid ids
-        rules = [rule for rule in self.fw_table if rule[0] == src and rule[1] == dst]
+        p_type = p.p_type
+        # the & are for handling * in rules
+        rules = [rule for rule in self.fw_rules if
+                 rule.src & src == src and rule.dst & dst == dst and rule.p_type & p_type == p_type]
         if rules:
-            return (True, False)[rules[-1][2] == FWState.DROP]
-
-        # src is match all
-        rules = [rule for rule in self.fw_table if rule[0] == consts.SEND_ALL and rule[1] == dst]
-        if rules:
-            return (True, False)[rules[-1][2] == FWState.DROP]
-
-        # dst is match all
-        rules = [rule for rule in self.fw_table if rule[1] == consts.SEND_ALL and rule[0] == src]
-        if rules:
-            return (True, False)[rules[-1][2] == FWState.DROP]
-
-        # dst and src are both match all
-        rules = [rule for rule in self.fw_table if rule[1] == consts.SEND_ALL and rule[0] == consts.SEND_ALL]
-        if rules:
-            return (True, False)[rules[-1][2] == FWState.DROP]
+            return (True, False)[rules[-1].action == FWState.DROP]
         return True
 
 
@@ -179,21 +173,14 @@ class Node:
         p.data = data
         self.send(p)
 
-    def fw_drop(self, dest_id):
-        self.id_table.set_state(dest_id, FWState.DROP)
-
-    def fw_accept(self, dest_id):
-        self.id_table.set_state(dest_id, FWState.ACCEPT)
-
-    def set_fw_rule(self, dir, src, dst, action):
+    def set_fw_rule(self, dir, src, dst, action, p_type=PacketType.ALL):
         src = int(src)
         dst = int(dst)
         if dir == "INPUT":
-            self.id_table.fw_table.append((src, self.id, FWState[action]))
+            dst = self.id
         elif dir == "OUTPUT":
-            self.id_table.fw_table.append((self.id, dst, FWState[action]))
-        elif dir == "FORWARD":
-            self.id_table.fw_table.append((src, dst, FWState[action]))
+            src = self.id
+        self.id_table.fw_rules.append(FWRule(src=src, dst=dst, p_type=p_type, action=FWState[action]))
 
     def set_parent(self, pid: int, pport: int):
         id, port = int(pid), int(pport)

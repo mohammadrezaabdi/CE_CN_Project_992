@@ -12,6 +12,7 @@ class PacketType(IntEnum):
     DESTINATION_NOT_FOUND = 31
     CONNECTION_REQUEST = 41
     CONNECTION_RESPONSE = 42
+    ALL = 63
 
 
 class Packet:
