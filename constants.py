@@ -129,3 +129,23 @@ ROOT_PARENT_PORT = -2
 NEXT_HOP_NOT_FOUND = -3
 
 SEND_ALL = -1
+
+
+class bcolors:
+    HEADER = '\033[95m'
+    OKBLUE = '\033[94m'
+    OKCYAN = '\033[96m'
+    OKGREEN = '\033[92m'
+    WARNING = '\033[93m'
+    FAIL = '\033[91m'
+    ENDC = '\033[0m'
+    BOLD = '\033[1m'
+    UNDERLINE = '\033[4m'
+
+
+def print_green(msg: str):
+    print(bcolors.OKGREEN + msg + bcolors.ENDC)
+
+
+def print_bold(msg: str):
+    print(bcolors.BOLD + msg + bcolors.ENDC)

@@ -4,6 +4,7 @@ import re
 import socket
 
 import constants as consts
+from constants import print_green, print_bold
 import globals
 from chat import Chat, ChatState
 from firewall import FWAction, FWRule
@@ -48,7 +49,7 @@ class Node:
                 if not self.id_table.fw_allows(packet):
                     return
 
-                print(consts.LOG_TEMPLATE.format(type=packet.p_type, id_src=packet.src_id, id_dest=packet.dest_id))
+                print_green(consts.LOG_TEMPLATE.format(type=packet.p_type, id_src=packet.src_id, id_dest=packet.dest_id))
                 if self.id == packet.dest_id or packet.dest_id == consts.SEND_ALL:
                     self.id_table.known_hosts.add(packet.src_id)
 
@@ -129,10 +130,10 @@ class Node:
             self.send_packet(p)
         if p.dest_id == self.id or p.dest_id == consts.SEND_ALL:
             if consts.SALAM_RAW_REGEX.match(p.data):
-                print(consts.SALAM_PRINT.format(id=p.src_id))
+                print_bold(consts.SALAM_PRINT.format(id=p.src_id))
                 p = Packet(PacketType.MESSAGE.value, self.id, p.src_id, consts.SALAM_RESPONSE)
             elif consts.SALAM_RESPONSE_REGEX.match(p.data):
-                print(consts.SALAM_RESPONSE_PRINT.format(id=p.src_id))
+                print_bold(consts.SALAM_RESPONSE_PRINT.format(id=p.src_id))
                 return
             elif consts.REQ_FOR_CHAT_REGEX.match(p.data):
                 if self.chat.state != ChatState.INACTIVE:
@@ -140,7 +141,9 @@ class Node:
                 elems = consts.REQ_FOR_CHAT_REGEX.findall(p.data)
                 ids = ast.literal_eval(f"[{elems[0][1]}]")
                 self.id_table.known_hosts.update(ids)
-                id_ports = [(id, self.id_table.get_next_hop(id)[1]) for id in ids]
+                id_ports = [(id, self.id_table.get_next_hop(id)[1]) for id in ids if
+                            self.id_table.get_next_hop(id, src_id=self.id) != consts.NEXT_HOP_NOT_FOUND]
+
                 self.chat.start_chat(elems[0][0], self.id, id_ports)
                 return
             elif consts.SET_NAME_REGEX.match(p.data) and self.chat.state != ChatState.INACTIVE:
@@ -162,7 +165,7 @@ class Node:
                     return
                 raw = consts.SHOW_MSG_REGEX.findall(p.data)[0]
                 src_name = self.chat.chat_list[int(p.src_id)]
-                print(consts.SHOW_MSG.format(chat_name=src_name, message=raw))
+                print_bold(consts.SHOW_MSG.format(chat_name=src_name, message=raw))
                 return
             else:
                 return
@@ -231,7 +234,8 @@ class Node:
                     break
                 elems = consts.START_CHAT_REGEX.findall(cmd)
                 ids = ast.literal_eval(f"[{elems[0][1]}]")
-                id_ports = [(id, self.id_table.get_next_hop(id)[1]) for id in ids]
+                id_ports = [(id, self.id_table.get_next_hop(id)[1]) for id in ids if self.id_table.get_next_hop(id,src_id=self.id) != consts.NEXT_HOP_NOT_FOUND]
+
                 self.chat.init_chat(elems[0][0], id_ports)
             elif consts.EXIT_CHAT_MSG_REGEX.match(cmd):
                 self.chat.send_to_chat_list(consts.EXIT_CHAT.format(id=self.id))
