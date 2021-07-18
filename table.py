@@ -27,7 +27,7 @@ class IdTable:
             return results[0].next_hop
         return self.default_gateway
 
-    def add_entry(self, dest_id: int, next_hop: (int, int)):
+    def add_entry(self, dest_id: int, next_hop: tuple[int, int]):
         results = [route.next_hop for route in self.routing_table if route.dest == dest_id]
         if next_hop in results:
             raise Exception("there is a loop")
