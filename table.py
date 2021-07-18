@@ -1,7 +1,8 @@
 from dataclasses import dataclass
-from packet import Packet
+
 import constants as consts
 from firewall import FWRule, FWAction
+from packet import Packet
 
 
 @dataclass
@@ -13,14 +14,17 @@ class IdRoute:
 
 
 class IdTable:
-    def __init__(self):
+    def __init__(self, id: int):
         self.default_gateway: tuple[int, int] = tuple()
         self.routing_table: list[IdRoute] = []
         self.known_hosts: set[int] = set()
         self.fw_rules: list[FWRule] = []
+        self.id = id
 
-    def get_next_hop(self, dest_id: int):  # todo Mahdi ghaznavi??
+    def get_next_hop(self, dest_id: int, src_id=consts.SEND_ALL):  # todo Mahdi ghaznavi??
         if dest_id not in self.known_hosts:
+            if src_id != self.id:
+                return self.default_gateway
             return consts.NEXT_HOP_NOT_FOUND
         results = [route for route in self.routing_table if route.dest == dest_id and route.state == FWAction.ACCEPT]
         if results:

@@ -16,9 +16,9 @@ logger = logging.getLogger("node")
 
 class Node:
     def __init__(self, ID, port):
-        self.id = ID
+        self.id = int(ID)
         self.port = port
-        self.id_table = IdTable()
+        self.id_table = IdTable(self.id)
         self.left_child = None
         self.right_child = None
         self.parent = None
@@ -193,7 +193,7 @@ class Node:
             return
         if not port:
             try:
-                port = int(self.id_table.get_next_hop(p.dest_id)[1])
+                port = int(self.id_table.get_next_hop(p.dest_id, src_id=p.src_id)[1])
             except Exception as e:
                 if self.id != p.src_id:
                     port = self.id_table.default_gateway[1]
