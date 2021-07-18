@@ -43,12 +43,12 @@ class Node:
                 data = ast.literal_eval(data)
                 logger.debug(f"received message is:{data}")
                 packet = Packet(**data)
-                print(consts.LOG_TEMPLATE.format(type=packet.p_type, id_src=packet.src_id, id_dest=packet.dest_id))
 
                 # firewall check
                 if not self.id_table.fw_allows(packet):
                     return
 
+                print(consts.LOG_TEMPLATE.format(type=packet.p_type, id_src=packet.src_id, id_dest=packet.dest_id))
                 if self.id == packet.dest_id or packet.dest_id == consts.SEND_ALL:
                     self.id_table.known_hosts.add(packet.src_id)
 
