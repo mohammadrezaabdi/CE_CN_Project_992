@@ -1,8 +1,7 @@
 import concurrent.futures
 import logging
 import socket
-import typing
-from typing import Callable, Any, Iterable
+from typing import Callable, Any
 
 
 class Server:

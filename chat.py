@@ -35,12 +35,15 @@ class Chat:
         self.send_to_chat_list(consts.REQ_FOR_CHAT.format(name=owner_name, ids=(
             ", ".join(map(str, [elem[0] for elem in id_port_list]))).strip()))
 
+    # Handles chat invitation. Asks users whether they want to join the chat or not and if they want,
+    # asks their name
     def start_chat(self, owner_name: str, your_id: int, id_port_list: list[tuple[int, int]]):
         self.set_chat(ChatState.PENDING, (your_id, ""), (id_port_list[0][0], owner_name),
                       {id_port[0]: "" for id_port in id_port_list}, dict(id_port_list))
 
         while True:
             print(consts.ASK_JOIN_CHAT.format(chat_name=owner_name, id=id_port_list[0][0]))
+            # handling input from another thread using semaphore and global variables.
             globals.cmd_sema.acquire()
             is_join = globals.chat_input
             if consts.YES_REGEX.match(is_join):
@@ -56,6 +59,8 @@ class Chat:
                 self.clear_chat()
                 return
 
+    # if is_broadcast is set to ture, it will send to all people in chat list, otherwise it will only
+    # send the message to those who have set a name for themselves and really joined the chat.
     def send_to_chat_list(self, data: str, is_broadcast: bool = True):
         if self.state == ChatState.INACTIVE:
             return

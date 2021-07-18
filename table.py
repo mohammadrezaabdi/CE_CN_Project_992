@@ -1,5 +1,4 @@
 from dataclasses import dataclass
-
 import constants as consts
 from firewall import FWRule, FWAction
 from packet import Packet
@@ -15,7 +14,7 @@ class IdRoute:
 
 class IdTable:
     def __init__(self, id: int):
-        self.default_gateway: tuple[int, int] = tuple()
+        self.default_gateway: tuple[int, int] = tuple()  # default gateway is actully a gateway to parent.
         self.routing_table: list[IdRoute] = []
         self.known_hosts: set[int] = set()
         self.fw_rules: list[FWRule] = []
@@ -34,6 +33,7 @@ class IdTable:
     def add_entry(self, dest_id: int, next_hop: tuple[int, int]):
         results = [route.next_hop for route in self.routing_table if route.dest == dest_id]
         if next_hop in results:
+            # This exception should never happen. It is here just as a safety check.
             raise Exception("there is a loop")
         self.routing_table.append(IdRoute(dest_id, next_hop))
         self.known_hosts.add(dest_id)

@@ -24,6 +24,8 @@ def handle_client(conn: socket.socket):
             data = conn.recv(consts.BUFFER_SIZE).decode("ascii")
             if not data:
                 return
+
+            # Packets are sent as dictionary string. we convert them back to python strings using ast.literal_eval.
             data = ast.literal_eval(data)
             logger.debug(f"received message is:{data}")
             packet = Packet(**data)

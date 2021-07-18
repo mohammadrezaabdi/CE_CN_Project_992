@@ -49,23 +49,30 @@ class Node:
                 if not self.id_table.fw_allows(packet):
                     return
 
-                print_green(consts.LOG_TEMPLATE.format(type=packet.p_type, id_src=packet.src_id, id_dest=packet.dest_id))
+                print_green(
+                    consts.LOG_TEMPLATE.format(type=packet.p_type, id_src=packet.src_id, id_dest=packet.dest_id))
                 if self.id == packet.dest_id or packet.dest_id == consts.SEND_ALL:
                     self.id_table.known_hosts.add(packet.src_id)
 
                 if packet.p_type == PacketType.CONNECTION_REQUEST:
                     self.connection_request_handle(packet)
                     self.advertise_parent(packet.src_id)
+
                 elif packet.p_type == PacketType.MESSAGE:
                     self.message_handle(packet)
+
                 elif packet.p_type == PacketType.ROUTING_REQUEST:
                     self.routing_request_handle(packet)
+
                 elif packet.p_type == PacketType.ROUTING_RESPONSE:
                     self.routing_response_handle(packet, False)
+
                 elif packet.p_type == PacketType.PARENT_ADVERTISE:
                     self.advertise_parent_handle(packet)
+
                 elif packet.p_type == PacketType.DESTINATION_NOT_FOUND:
                     self.routing_response_handle(packet, True)
+
                 elif packet.p_type == PacketType.ADVERTISE:
                     self.advertise_handle(packet)
 
@@ -215,31 +222,40 @@ class Node:
                 globals.chat_input = cmd
                 globals.cmd_sema.release()
                 continue
+
             if self.chat.state == ChatState.ACTIVE:
                 self.chat.send_to_chat_list(consts.CHAT + cmd, is_broadcast=False)
+
             elif consts.ROUTE_REGEX.match(cmd):
                 self.send_packet(
                     Packet(PacketType.ROUTING_REQUEST.value, self.id, int(re.findall(consts.ROUTE_REGEX, cmd)[0])))
+
             elif consts.ADVERTISE_REGEX.match(cmd):
                 self.send_packet(
                     Packet(PacketType.ADVERTISE.value, self.id, int(consts.ADVERTISE_REGEX.findall(cmd)[0])))
+
             elif consts.ADVERTISE_ALL_REGEX.match(cmd):
                 self.send_packet(Packet(PacketType.ADVERTISE.value, self.id, consts.SEND_ALL))
+
             elif consts.SALAM_REGEX.match(cmd):
                 self.send_packet(
                     Packet(PacketType.MESSAGE.value, self.id, int(consts.SALAM_REGEX.findall(cmd)[0]), consts.SALAM))
+
             elif consts.START_CHAT_REGEX.match(cmd):
                 if self.chat.state == ChatState.DISABLE:
                     print(consts.CHAT_IS_DISABLE)
                     break
                 elems = consts.START_CHAT_REGEX.findall(cmd)
                 ids = ast.literal_eval(f"[{elems[0][1]}]")
-                id_ports = [(id, self.id_table.get_next_hop(id)[1]) for id in ids if self.id_table.get_next_hop(id,src_id=self.id) != consts.NEXT_HOP_NOT_FOUND]
+                id_ports = [(id, self.id_table.get_next_hop(id)[1]) for id in ids if
+                            self.id_table.get_next_hop(id, src_id=self.id) != consts.NEXT_HOP_NOT_FOUND]
 
                 self.chat.init_chat(elems[0][0], id_ports)
+
             elif consts.EXIT_CHAT_MSG_REGEX.match(cmd):
                 self.chat.send_to_chat_list(consts.EXIT_CHAT.format(id=self.id))
                 self.chat.clear_chat()
+
             elif consts.FILTER_REGEX.match(cmd):
                 [(dir, src, dst, action)] = consts.FILTER_REGEX.findall(cmd)
                 if src == "*":
@@ -247,6 +263,7 @@ class Node:
                 if dst == "*":
                     dst = consts.SEND_ALL
                 self.set_fw_rule(dir, src, dst, action)
+
             elif consts.FW_CHAT_REGEX.match(cmd):
                 [(action)] = consts.FW_CHAT_REGEX.findall(cmd)
                 if FWAction[action] == FWAction.DROP:
@@ -254,5 +271,6 @@ class Node:
                 elif FWAction[action] == FWAction.ACCEPT:
                     self.chat.state = ChatState.INACTIVE
                 self.set_fw_rule('FORWARD', consts.SEND_ALL, consts.SEND_ALL, action, p_type=PacketType.MESSAGE)
+
             elif consts.SHOW_KNOWN_CLIENTS_REGEX.match(cmd):
                 print(self.id_table.known_hosts)
