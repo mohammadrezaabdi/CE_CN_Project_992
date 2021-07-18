@@ -6,12 +6,14 @@ import threading
 import time
 
 import constants as consts
-from node import Node, ChatState
+from node import Node, ChatState, FWState
 from packet import *
 
 logger = logging.getLogger("client")
 cmd_sema = threading.Semaphore(0)
 chat_input = ""
+
+chat_enable = True
 
 
 def send(ip: str, port: int, packet: Packet):
@@ -44,6 +46,9 @@ def handle_user_commands(node: Node):
         elif consts.SALAM_REGEX.match(cmd):
             node.send_packet_util(PacketType.MESSAGE, int(consts.SALAM_REGEX.findall(cmd)[0]), consts.SALAM)
         elif consts.START_CHAT_REGEX.match(cmd):
+            if not allow_chat:
+                print(consts.CHAT_IS_DISABLE)
+                break
             elems = consts.START_CHAT_REGEX.findall(cmd)
             ids = ast.literal_eval(f"[{elems[0][1]}]")
             node.chat.init_chat(elems[0][0], ids)
@@ -59,6 +64,11 @@ def handle_user_commands(node: Node):
             node.set_fw_rule(dir, src, dst, action)
         elif consts.FW_CHAT_REGEX.match(cmd):
             [(action)] = consts.FW_CHAT_REGEX.findall(cmd)
+            if FWState[action] == FWState.DROP:
+                allow_chat = False
+            elif FWState[action] == FWState.ACCEPT:
+                allow_chat = True
+
             node.set_fw_rule('FORWARD', consts.SEND_ALL, consts.SEND_ALL, action, p_type=PacketType.MESSAGE)
         elif consts.SHOW_KNOWN_CLIENTS_REGEX.match(cmd):
             print(node.id_table.known_hosts)
