@@ -2,6 +2,7 @@ import ast
 import logging
 import socket
 import threading
+from dataclasses import dataclass
 from enum import Enum, IntEnum
 from threading import Lock
 
@@ -16,20 +17,22 @@ log.init()
 logger = logging.getLogger("node")
 
 
-class FWState(Enum):
+class FWAction(Enum):
     ACCEPT = 0
     DROP = 1
 
 
+@dataclass
 class IdRoute:
-    def __init__(self, dest: int, next_hop: tuple[int, int], state: FWState = FWState.ACCEPT):
+    def __init__(self, dest: int, next_hop: tuple[int, int], state: FWAction = FWAction.ACCEPT):
         self.dest = dest
         self.next_hop = next_hop
         self.state = state
 
 
+@dataclass
 class FWRule:
-    def __init__(self, src=consts.SEND_ALL, dst=consts.SEND_ALL, p_type=PacketType.ALL, action: FWState = FWState.DROP):
+    def __init__(self, src=consts.SEND_ALL, dst=consts.SEND_ALL, p_type=PacketType.ALL, action: FWAction = FWAction.DROP):
         self.src = src
         self.dst = dst
         self.p_type = p_type
@@ -46,7 +49,7 @@ class IdTable:
     def get_next_hop(self, dest_id: int):  # todo Mahdi ghaznavi??
         if dest_id not in self.known_hosts:
             return consts.NEXT_HOP_NOT_FOUND
-        results = [route for route in self.routing_table if route.dest == dest_id and route.state == FWState.ACCEPT]
+        results = [route for route in self.routing_table if route.dest == dest_id and route.state == FWAction.ACCEPT]
         if results:
             return results[0].next_hop
         return self.default_gateway
@@ -58,7 +61,7 @@ class IdTable:
         self.routing_table.append(IdRoute(dest_id, next_hop))
         self.known_hosts.add(dest_id)
 
-    def set_state(self, dest_id: int, state: FWState):
+    def set_state(self, dest_id: int, state: FWAction):
         for route in self.routing_table:
             if route.dest == dest_id:
                 route.state = state
@@ -71,7 +74,7 @@ class IdTable:
         rules = [rule for rule in self.fw_rules if
                  rule.src & src == src and rule.dst & dst == dst and rule.p_type & p_type == p_type]
         if rules:
-            return (True, False)[rules[-1].action == FWState.DROP]
+            return (True, False)[rules[-1].action == FWAction.DROP]
         return True
 
 
@@ -180,7 +183,7 @@ class Node:
             dst = self.id
         elif dir == "OUTPUT":
             src = self.id
-        self.id_table.fw_rules.append(FWRule(src=src, dst=dst, p_type=p_type, action=FWState[action]))
+        self.id_table.fw_rules.append(FWRule(src=src, dst=dst, p_type=p_type, action=FWAction[action]))
 
     def set_parent(self, pid: int, pport: int):
         id, port = int(pid), int(pport)

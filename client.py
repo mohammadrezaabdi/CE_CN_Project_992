@@ -6,7 +6,7 @@ import threading
 import time
 
 import constants as consts
-from node import Node, ChatState, FWState
+from node import Node, ChatState, FWAction
 from packet import *
 
 logger = logging.getLogger("client")
@@ -64,9 +64,9 @@ def handle_user_commands(node: Node):
             node.set_fw_rule(dir, src, dst, action)
         elif consts.FW_CHAT_REGEX.match(cmd):
             [(action)] = consts.FW_CHAT_REGEX.findall(cmd)
-            if FWState[action] == FWState.DROP:
+            if FWAction[action] == FWAction.DROP:
                 allow_chat = False
-            elif FWState[action] == FWState.ACCEPT:
+            elif FWAction[action] == FWAction.ACCEPT:
                 allow_chat = True
 
             node.set_fw_rule('FORWARD', consts.SEND_ALL, consts.SEND_ALL, action, p_type=PacketType.MESSAGE)
