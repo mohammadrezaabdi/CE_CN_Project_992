@@ -207,13 +207,16 @@ class Node:
             try:
                 port = int(self.id_table.get_next_hop(p.dest_id, src_id=p.src_id)[1])
             except Exception as e:
-                if self.id != p.src_id:
-                    port = self.id_table.default_gateway[1]
-                else:
+                if self.id != p.src_id and self.parent[0] == consts.ROOT_PARENT_ID:
                     print(consts.UNKNOWN_DEST.format(id_dest=p.dest_id))
                     p = Packet(PacketType.DESTINATION_NOT_FOUND.value, self.id, p.src_id,
                                consts.DEST_NOT_FOUND.format(id_dest=p.dest_id))
-                    port = int(self.id_table.get_next_hop(p.dest_id)[1])
+                    port = int(self.id_table.get_next_hop(p.src_id)[1])
+                elif self.id != p.src_id:
+                    port = self.id_table.default_gateway[1]
+                else:
+                    print(consts.UNKNOWN_DEST.format(id_dest=p.dest_id))
+                    return
 
         p.send(consts.DEFAULT_IP, port)
 
