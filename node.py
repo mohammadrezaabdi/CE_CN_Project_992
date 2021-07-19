@@ -137,10 +137,10 @@ class Node:
             self.send_packet(p)
         if p.dest_id == self.id or p.dest_id == consts.SEND_ALL:
             if consts.SALAM_RAW_REGEX.match(p.data):
-                print_bold(consts.SALAM_PRINT.format(id=p.src_id))
+                print_bold(consts.SALAM)
                 p = Packet(PacketType.MESSAGE.value, self.id, p.src_id, consts.SALAM_RESPONSE)
             elif consts.SALAM_RESPONSE_REGEX.match(p.data):
-                print_bold(consts.SALAM_RESPONSE_PRINT.format(id=p.src_id))
+                print_bold(consts.SALAM_RESPONSE)
                 return
             elif consts.REQ_FOR_CHAT_REGEX.match(p.data):
                 if self.chat.state != ChatState.INACTIVE:
@@ -158,14 +158,16 @@ class Node:
                     return
                 elems = consts.SET_NAME_REGEX.findall(p.data)
                 self.chat.chat_list[int(elems[0][0])] = elems[0][1]
-                print(consts.JOINED_CHAT.format(chat_name=elems[0][1], id=elems[0][0]))
+                if self.chat.state == ChatState.ACTIVE:
+                    print(consts.JOINED_CHAT.format(chat_name=elems[0][1], id=elems[0][0]))
                 return
             elif consts.EXIT_CHAT_REGEX.match(p.data) and self.chat.state != ChatState.INACTIVE:
                 if not self.chat.is_in_your_chat(p):  # check if this packet belongs to your chat
                     return
-                id = int(consts.EXIT_CHAT_REGEX.findall(p.data)[0][0])
+                id = int((consts.EXIT_CHAT_REGEX.findall(p.data)[0],)[0])
                 name = self.chat.chat_list.pop(id)
-                print(consts.LEFT_CHAT.format(chat_name=name, id=id))
+                if self.chat.state == ChatState.ACTIVE:
+                    print(consts.LEFT_CHAT.format(chat_name=name, id=id))
                 return
             elif consts.SHOW_MSG_REGEX.match(p.data) and self.chat.state == ChatState.ACTIVE:
                 if not self.chat.is_in_your_chat(p):  # check if this packet belongs to your chat
@@ -271,7 +273,8 @@ class Node:
                     self.chat.state = ChatState.DISABLE
                 elif FWAction[action] == FWAction.ACCEPT:
                     self.chat.state = ChatState.INACTIVE
-                self.set_fw_rule('FORWARD', consts.SEND_ALL, consts.SEND_ALL, action, p_type=PacketType.MESSAGE)
+                self.set_fw_rule('FORWARD', consts.SEND_ALL, self.id, action, p_type=PacketType.MESSAGE)
+                self.set_fw_rule('FORWARD', self.id, consts.SEND_ALL, action, p_type=PacketType.MESSAGE)
 
             elif consts.SHOW_KNOWN_CLIENTS_REGEX.match(cmd):
                 print(self.id_table.known_hosts)

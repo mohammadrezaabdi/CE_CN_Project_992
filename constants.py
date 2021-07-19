@@ -40,7 +40,6 @@ SHOW_KNOWN_CLIENTS_REGEX = re.compile(r"^SHOW KNOWN CLIENTS$")
 UNKNOWN_DEST = "Unknown destination {id_dest}"
 
 DEST_NOT_FOUND = "DESTINATION {id_dest} NOT FOUND"
-DEST_NOT_FOUND_REGEX = re.compile(r"^DESTINATION (-?\d+) NOT FOUND$")
 
 ROUTE = "ROUTE {id}"
 ROUTE_REGEX = re.compile(r"^ROUTE (-?\d+)$")
