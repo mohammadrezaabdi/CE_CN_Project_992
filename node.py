@@ -4,9 +4,9 @@ import re
 import socket
 
 import constants as consts
-from constants import print_green, print_bold
 import globals
 from chat import Chat, ChatState
+from constants import print_green, print_bold
 from firewall import FWAction, FWRule
 from packet import Packet, PacketType
 from server import Server
@@ -258,14 +258,13 @@ class Node:
 
                 self.chat.init_chat(elems[0][0], id_ports)
 
-
             elif consts.FILTER_REGEX.match(cmd):
-                [(dir, src, dst, action)] = consts.FILTER_REGEX.findall(cmd)
+                [(dir, src, dst, p_type, action)] = consts.FILTER_REGEX.findall(cmd)
                 if src == "*":
                     src = consts.SEND_ALL
                 if dst == "*":
                     dst = consts.SEND_ALL
-                self.set_fw_rule(dir, src, dst, action)
+                self.set_fw_rule(dir, src, dst, action, p_type=PacketType(int(p_type)))
 
             elif consts.FW_CHAT_REGEX.match(cmd):
                 [(action)] = consts.FW_CHAT_REGEX.findall(cmd)

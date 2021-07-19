@@ -1,7 +1,8 @@
 from dataclasses import dataclass
+
 import constants as consts
 from firewall import FWRule, FWAction
-from packet import Packet
+from packet import Packet, PacketType
 
 
 @dataclass
@@ -48,8 +49,9 @@ class IdTable:
         dst = p.dest_id
         p_type = p.p_type
         # the & are for handling * in rules
-        rules = [rule for rule in self.fw_rules if
-                 rule.src & src == src and rule.dst & dst == dst and rule.p_type & p_type == p_type]
+        rules = [rule for rule in self.fw_rules if (rule.src == consts.SEND_ALL or rule.src == src) and (
+                    rule.dst == consts.SEND_ALL or rule.dst == dst) and (
+                             rule.p_type == PacketType.ALL or rule.p_type == p_type)]
         if rules:
             return (True, False)[rules[-1].action == FWAction.DROP]
         return True
