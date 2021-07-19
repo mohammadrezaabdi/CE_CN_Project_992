@@ -48,10 +48,18 @@ class IdTable:
         src = p.src_id
         dst = p.dest_id
         p_type = p.p_type
+        rules = []
         # the & are for handling * in rules
-        rules = [rule for rule in self.fw_rules if (rule.src == consts.SEND_ALL or rule.src == src) and (
+        for rule in self.fw_rules:
+            if rule.direction == "FORWARD" and (
+                    rule.src == self.id or (rule.src == consts.SEND_ALL and p.src_id == self.id)) or (
+                    rule.dst == self.id or (rule.dst == consts.SEND_ALL and p.dest_id == self.id)):
+                continue
+
+            if (rule.src == consts.SEND_ALL or rule.src == src) and (
                     rule.dst == consts.SEND_ALL or rule.dst == dst) and (
-                             rule.p_type == PacketType.ALL or rule.p_type == p_type)]
+                    rule.p_type == PacketType.ALL or rule.p_type == p_type):
+                rules.append(rule)
         if rules:
             return (True, False)[rules[-1].action == FWAction.DROP]
         return True

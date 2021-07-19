@@ -183,11 +183,19 @@ class Node:
     def set_fw_rule(self, dir: str, src: int, dst: int, action: FWAction, p_type: PacketType = PacketType.ALL):
         src = int(src)
         dst = int(dst)
+        direction = ""
+        if dir == "FORWARD":
+            direction = "FORWARD"
+            if src == self.id or dst == self.id:
+                print("INVALID FORWARD RULE")
+                return
+
         if dir == "INPUT":
             dst = self.id
         elif dir == "OUTPUT":
             src = self.id
-        self.id_table.fw_rules.append(FWRule(src=src, dst=dst, p_type=p_type, action=FWAction[action]))
+        self.id_table.fw_rules.append(
+            FWRule(src=src, dst=dst, p_type=p_type, action=FWAction[action], direction=direction ))
 
     def send_packet(self, p: Packet):
         if int(p.dest_id) == consts.SEND_ALL:
@@ -275,8 +283,8 @@ class Node:
                     self.chat.state = ChatState.DISABLE
                 elif FWAction[action] == FWAction.ACCEPT:
                     self.chat.state = ChatState.INACTIVE
-                self.set_fw_rule('FORWARD', consts.SEND_ALL, self.id, action, p_type=PacketType.MESSAGE)
-                self.set_fw_rule('FORWARD', self.id, consts.SEND_ALL, action, p_type=PacketType.MESSAGE)
+                self.set_fw_rule('INPUT', consts.SEND_ALL, self.id, action, p_type=PacketType.MESSAGE )
+                self.set_fw_rule('OUTPUT', self.id, consts.SEND_ALL, action, p_type=PacketType.MESSAGE)
 
             elif consts.SHOW_KNOWN_CLIENTS_REGEX.match(cmd):
                 print(self.id_table.known_hosts)
