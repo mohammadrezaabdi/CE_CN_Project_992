@@ -224,7 +224,11 @@ class Node:
                 continue
 
             if self.chat.state == ChatState.ACTIVE:
-                self.chat.send_to_chat_list(consts.CHAT + cmd, is_broadcast=False)
+                if consts.EXIT_CHAT_MSG_REGEX.match(cmd):
+                    self.chat.send_to_chat_list(consts.EXIT_CHAT.format(id=self.id))
+                    self.chat.clear_chat()
+                else:
+                    self.chat.send_to_chat_list(consts.CHAT + cmd, is_broadcast=False)
 
             elif consts.ROUTE_REGEX.match(cmd):
                 self.send_packet(
@@ -252,9 +256,6 @@ class Node:
 
                 self.chat.init_chat(elems[0][0], id_ports)
 
-            elif consts.EXIT_CHAT_MSG_REGEX.match(cmd):
-                self.chat.send_to_chat_list(consts.EXIT_CHAT.format(id=self.id))
-                self.chat.clear_chat()
 
             elif consts.FILTER_REGEX.match(cmd):
                 [(dir, src, dst, action)] = consts.FILTER_REGEX.findall(cmd)

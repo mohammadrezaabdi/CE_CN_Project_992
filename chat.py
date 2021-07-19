@@ -5,10 +5,11 @@ import globals
 
 
 class ChatState(IntEnum):
+    DISABLE = -1
     INACTIVE = 0
     PENDING = 1
     ACTIVE = 2
-    DISABLE = 3
+
 
 
 class Chat:
